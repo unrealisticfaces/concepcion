@@ -16,6 +16,7 @@ const firebaseConfig = {
   measurementId: "G-77KBKFPMXH"
 };
 
+// Safety valve to prevent hot-reload crashes
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const db = getDatabase(app);
 const auth = getAuth(app);
@@ -60,7 +61,7 @@ const faqs = [
 
 const expertise = [
   { id: 1, title: "Mentorship & Teaching", desc: "Empowering the next generation with direct, actionable guidance.", icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 14l9-5-9-5-9 5 9 5z" /> },
-  { id: 2, title: "Event Hosting", desc: "Commanding stages and keeping corporate events flowing seamlessly.", icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11a7 7 0 01-7-7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /> },
+  { id: 2, title: "Event Hosting", desc: "Commanding stages and keeping corporate events flowing seamlessly.", icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /> },
   { id: 3, title: "Virtual Assistance", desc: "Optimizing workflows and scaling digital businesses behind the scenes.", icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /> },
   { id: 4, title: "Author & Creator", desc: "Distilling years of experience into premium books and digital courses.", icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /> }
 ];
@@ -80,7 +81,7 @@ const Toast = ({ message, type, onClose }) => {
       const timer = setTimeout(onClose, 3500);
       return () => clearTimeout(timer);
     }
-  }, [message, onClose]); 
+  }, [message]); 
 
   if (!message) return null;
 
@@ -342,135 +343,133 @@ const Booking = ({ user, showToast }) => {
   };
 
   return (
-    <>
-      <div className="w-full py-12 px-6 flex justify-center">
-        <div className="max-w-6xl mx-auto w-full mt-4 animate-fade-up">
-          <div className="mb-10">
-            <h2 className="text-3xl font-bold text-white mb-2">Book a Session</h2>
-            <p className="text-gray-400 text-base">Select a service to view availability.</p>
-          </div>
+    <div className="w-full py-12 px-6 flex justify-center animate-fade-up">
+      <div className="max-w-6xl mx-auto w-full mt-4">
+        <div className="mb-10">
+          <h2 className="text-3xl font-bold text-white mb-2">Book a Session</h2>
+          <p className="text-gray-400 text-base">Select a service to view availability.</p>
+        </div>
 
-          {isLoading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="w-8 h-8 border-4 border-[#FFBF00]/30 border-t-[#FFBF00] rounded-full animate-spin"></div>
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="w-8 h-8 border-4 border-[#FFBF00]/30 border-t-[#FFBF00] rounded-full animate-spin"></div>
+          </div>
+        ) : (
+          <div className="grid lg:grid-cols-[1fr_400px] gap-12 items-start">
+            <div className="flex flex-col space-y-4">
+              {dbServices.map((service) => (
+                <div 
+                  key={service.id}
+                  onClick={() => setSelectedService(service.id)}
+                  className={`p-6 rounded-lg border cursor-pointer transition-all duration-300 ${
+                    selectedService === service.id 
+                      ? 'bg-[#FFBF00]/10 border-[#FFBF00]' 
+                      : 'bg-[#121212] border-white/5 hover:border-white/20'
+                  }`}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-lg font-bold text-white">{service.title}</h3>
+                    <div className="text-lg font-bold text-[#FFBF00]">${(service.price || 0).toFixed(2)}</div>
+                  </div>
+                  <p className="text-gray-400 text-sm mb-3">{service.desc}</p>
+                  <div className="flex items-center gap-2 text-gray-500 text-sm font-medium">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-[#FFBF00]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    {service.duration}
+                  </div>
+                </div>
+              ))}
             </div>
-          ) : (
-            <div className="grid lg:grid-cols-[1fr_400px] gap-12 items-start">
-              <div className="flex flex-col space-y-4">
-                {dbServices.map((service) => (
-                  <div 
-                    key={service.id}
-                    onClick={() => setSelectedService(service.id)}
-                    className={`p-6 rounded-lg border cursor-pointer transition-all duration-300 ${
-                      selectedService === service.id 
-                        ? 'bg-[#FFBF00]/10 border-[#FFBF00]' 
-                        : 'bg-[#121212] border-white/5 hover:border-white/20'
+
+            <div className="bg-[#121212] rounded-lg border border-white/10 p-6 sticky top-24 shadow-xl">
+              <h3 className="text-lg font-bold text-white mb-4 border-b border-white/10 pb-3">Select Date & Time</h3>
+              {!selectedService ? (
+                <div className="flex flex-col items-center justify-center h-40 text-center opacity-50">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                  <p className="text-white text-sm">Please select a service first.</p>
+                </div>
+              ) : (
+                <div className="animate-fade-up">
+                  <div className="flex items-center justify-between mb-4 px-1">
+                    <span className="text-sm font-bold text-white">{monthsList[currentMonth]} {currentYear}</span>
+                    <div className="flex gap-2">
+                      <button onClick={handlePrevMonth} className="p-1 rounded bg-white/5 border border-white/10 text-gray-400 hover:text-white cursor-pointer">&larr;</button>
+                      <button onClick={handleNextMonth} className="p-1 rounded bg-white/5 border border-white/10 text-gray-400 hover:text-white cursor-pointer">&rarr;</button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-7 gap-1 mb-4 text-center">
+                    {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
+                      <div key={i} className="text-gray-500 font-medium text-xs py-1">{day}</div>
+                    ))}
+                    {Array.from({ length: firstDayIndex }).map((_, i) => (
+                      <div key={`empty-${i}`} className="py-2"></div>
+                    ))}
+                    {Array.from({ length: daysInMonth }).map((_, i) => {
+                      const day = i + 1;
+                      const daySlots = serviceAvailability[day];
+                      const isAvailable = daySlots && Array.isArray(daySlots) && daySlots.length > 0;
+                      const isSelected = selectedDate === day;
+                      return (
+                        <div 
+                          key={day} 
+                          onClick={() => handleDateClick(day, isAvailable)}
+                          className={`py-2 rounded text-sm font-medium transition-colors ${
+                            isSelected ? 'bg-[#FFBF00] text-black font-bold shadow-[0_0_10px_rgba(255,191,0,0.4)] cursor-pointer' : 
+                            isAvailable ? 'text-white hover:bg-white/10 cursor-pointer' : 
+                            'text-gray-700 opacity-30 line-through cursor-not-allowed'
+                          }`}
+                        >
+                          {day}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {selectedDate && (
+                    <div className="mb-6 animate-fade-up">
+                      <h4 className="text-sm font-bold text-gray-400 mb-3 border-t border-white/10 pt-4">Available Times</h4>
+                      {activeSlots.length === 0 ? (
+                        <p className="text-gray-500 text-xs italic">No time slots available for this date.</p>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-2">
+                          {activeSlots.map((time) => (
+                            <div 
+                              key={time}
+                              onClick={() => setSelectedTime(time)}
+                              className={`text-center py-2 border rounded text-xs font-bold cursor-pointer transition-colors ${
+                                selectedTime === time ? 'bg-[#FFBF00] border-[#FFBF00] text-black' : 'border-white/10 text-gray-300 hover:border-[#FFBF00]/50'
+                              }`}
+                            >
+                              {time}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <button 
+                    onClick={handleConfirmClick}
+                    disabled={!selectedDate || !selectedTime}
+                    className={`w-full text-sm font-bold py-3 rounded transition-all ${
+                      selectedDate && selectedTime
+                        ? 'cursor-pointer bg-[#FFBF00] text-black hover:bg-white shadow-[0_0_15px_rgba(255,191,0,0.2)]' 
+                        : 'bg-gray-800 text-gray-500 cursor-not-allowed'
                     }`}
                   >
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="text-lg font-bold text-white">{service.title}</h3>
-                      <div className="text-lg font-bold text-[#FFBF00]">${(service.price || 0).toFixed(2)}</div>
-                    </div>
-                    <p className="text-gray-400 text-sm mb-3">{service.desc}</p>
-                    <div className="flex items-center gap-2 text-gray-500 text-sm font-medium">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-[#FFBF00]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                      {service.duration}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="bg-[#121212] rounded-lg border border-white/10 p-6 sticky top-24 shadow-xl">
-                <h3 className="text-lg font-bold text-white mb-4 border-b border-white/10 pb-3">Select Date & Time</h3>
-                {!selectedService ? (
-                  <div className="flex flex-col items-center justify-center h-40 text-center opacity-50">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                    <p className="text-white text-sm">Please select a service first.</p>
-                  </div>
-                ) : (
-                  <div>
-                    <div className="flex items-center justify-between mb-4 px-1">
-                      <span className="text-sm font-bold text-white">{monthsList[currentMonth]} {currentYear}</span>
-                      <div className="flex gap-2">
-                        <button onClick={handlePrevMonth} className="p-1 rounded bg-white/5 border border-white/10 text-gray-400 hover:text-white cursor-pointer">&larr;</button>
-                        <button onClick={handleNextMonth} className="p-1 rounded bg-white/5 border border-white/10 text-gray-400 hover:text-white cursor-pointer">&rarr;</button>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-7 gap-1 mb-4 text-center">
-                      {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
-                        <div key={i} className="text-gray-500 font-medium text-xs py-1">{day}</div>
-                      ))}
-                      {Array.from({ length: firstDayIndex }).map((_, i) => (
-                        <div key={`empty-${i}`} className="py-2"></div>
-                      ))}
-                      {Array.from({ length: daysInMonth }).map((_, i) => {
-                        const day = i + 1;
-                        const daySlots = serviceAvailability[day];
-                        const isAvailable = daySlots && Array.isArray(daySlots) && daySlots.length > 0;
-                        const isSelected = selectedDate === day;
-                        return (
-                          <div 
-                            key={day} 
-                            onClick={() => handleDateClick(day, isAvailable)}
-                            className={`py-2 rounded text-sm font-medium transition-colors ${
-                              isSelected ? 'bg-[#FFBF00] text-black font-bold shadow-[0_0_10px_rgba(255,191,0,0.4)] cursor-pointer' : 
-                              isAvailable ? 'text-white hover:bg-white/10 cursor-pointer' : 
-                              'text-gray-700 opacity-30 line-through cursor-not-allowed'
-                            }`}
-                          >
-                            {day}
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {selectedDate && (
-                      <div className="mb-6">
-                        <h4 className="text-sm font-bold text-gray-400 mb-3 border-t border-white/10 pt-4">Available Times</h4>
-                        {activeSlots.length === 0 ? (
-                          <p className="text-gray-500 text-xs italic">No time slots available for this date.</p>
-                        ) : (
-                          <div className="grid grid-cols-2 gap-2">
-                            {activeSlots.map((time) => (
-                              <div 
-                                key={time}
-                                onClick={() => setSelectedTime(time)}
-                                className={`text-center py-2 border rounded text-xs font-bold cursor-pointer transition-colors ${
-                                  selectedTime === time ? 'bg-[#FFBF00] border-[#FFBF00] text-black' : 'border-white/10 text-gray-300 hover:border-[#FFBF00]/50'
-                                }`}
-                              >
-                                {time}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    <button 
-                      onClick={handleConfirmClick}
-                      disabled={!selectedDate || !selectedTime}
-                      className={`w-full text-sm font-bold py-3 rounded transition-all ${
-                        selectedDate && selectedTime
-                          ? 'cursor-pointer bg-[#FFBF00] text-black hover:bg-white shadow-[0_0_15px_rgba(255,191,0,0.2)]' 
-                          : 'bg-gray-800 text-gray-500 cursor-not-allowed'
-                      }`}
-                    >
-                      {(selectedDate && selectedTime) ? 'Confirm Details' : 'Select Date & Time'}
-                    </button>
-                  </div>
-                )}
-              </div>
+                    {(selectedDate && selectedTime) ? 'Confirm Details' : 'Select Date & Time'}
+                  </button>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 z-[100] flex justify-center items-center px-4" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999 }}>
+        <div className="fixed inset-0 z-[100] flex justify-center items-center px-4 animate-fade-up">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm cursor-pointer" onClick={() => !isSubmitted && setShowForm(false)}></div>
-          <div className="relative bg-[#121212] border border-white/10 rounded-xl w-full max-w-lg p-8 shadow-2xl z-10 animate-fade-up" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
+          <div className="relative bg-[#121212] border border-white/10 rounded-xl w-full max-w-lg p-8 shadow-2xl z-10">
             {!isSubmitted && (
               <button onClick={() => setShowForm(false)} className="cursor-pointer absolute top-4 right-4 text-gray-400 hover:text-white">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -516,7 +515,7 @@ const Booking = ({ user, showToast }) => {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 };
 
@@ -558,81 +557,87 @@ const Shop = ({ addToCart, user, showToast }) => {
   const displayProducts = dbProducts.length > 0 ? dbProducts : defaultProducts;
 
   return (
-    <>
-      <div className="w-full py-12 px-6 flex justify-center">
-        <div className="max-w-6xl mx-auto w-full relative mt-4 animate-fade-up">
-          <div className="mb-10">
-            <h2 className="text-3xl font-bold text-white mb-2">Digital Collection</h2>
-            <p className="text-gray-400 text-base">Premium books, guides, and courses curated for your growth.</p>
-          </div>
-          
-          {isLoading ? (
-             <div className="flex justify-center items-center h-64">
-               <div className="w-8 h-8 border-4 border-[#FFBF00]/30 border-t-[#FFBF00] rounded-full animate-spin"></div>
-             </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {displayProducts.map((product) => (
-                <div key={product.id} className="group flex flex-col bg-[#121212] rounded-lg border border-white/5 hover:border-[#FFBF00]/30 transition-all duration-300 overflow-hidden shadow-md hover:-translate-y-1">
-                  <div className="relative aspect-[4/5] overflow-hidden bg-black cursor-pointer shrink-0" onClick={() => setPreviewItem(product)}>
-                    <img src={product.image} alt={product.title} className="absolute inset-0 w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100" />
-                    <div className="absolute top-3 right-3 bg-black/80 px-2 py-1 rounded border border-white/10 pointer-events-none">
-                      <span className="text-xs font-bold text-white">{product.type}</span>
-                    </div>
-                  </div>
-                  <div className="flex-1 flex flex-col p-4">
-                    <h3 className="text-base font-bold text-white mb-1">{product.title}</h3>
-                    <span className="text-lg font-bold text-[#FFBF00] mb-4">${(parseFloat(product.price) || 0).toFixed(2)}</span>
-                    <div className="mt-auto grid grid-cols-2 gap-2">
-                      <button onClick={() => setPreviewItem(product)} className="cursor-pointer text-sm font-medium text-white border border-white/20 py-2 rounded hover:bg-white hover:text-black transition-colors">
-                        Preview
-                      </button>
-                      <button onClick={() => handleAddToCart(product)} className={`cursor-pointer text-sm font-medium py-2 rounded transition-colors ${addedItems[product.id] ? 'bg-green-500 text-white' : 'bg-[#FFBF00] text-black hover:bg-yellow-400'}`}>
-                        {addedItems[product.id] ? 'Added!' : 'Add to Cart'}
-                      </button>
-                    </div>
+    <div className="w-full py-12 px-6 flex justify-center animate-fade-up">
+      <div className="max-w-6xl mx-auto w-full relative mt-4">
+        <div className="mb-10">
+          <h2 className="text-3xl font-bold text-white mb-2">Digital Collection</h2>
+          <p className="text-gray-400 text-base">Premium books, guides, and courses curated for your growth.</p>
+        </div>
+        
+        {isLoading ? (
+           <div className="flex justify-center items-center h-64">
+             <div className="w-8 h-8 border-4 border-[#FFBF00]/30 border-t-[#FFBF00] rounded-full animate-spin"></div>
+           </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {displayProducts.map((product) => (
+              <div key={product.id} className="group flex flex-col bg-[#121212] rounded-lg border border-white/5 hover:border-[#FFBF00]/30 transition-all duration-300 overflow-hidden shadow-md hover:-translate-y-1">
+                <div className="relative aspect-[4/5] overflow-hidden bg-black cursor-pointer shrink-0" onClick={() => setPreviewItem(product)}>
+                  <img src={product.image} alt={product.title} className="absolute inset-0 w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100" />
+                  <div className="absolute top-3 right-3 bg-black/80 px-2 py-1 rounded border border-white/10 pointer-events-none">
+                    <span className="text-xs font-bold text-white">{product.type}</span>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {previewItem && (
-        <div className="fixed inset-0 z-[100] flex justify-center items-center px-4" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999 }}>
-          <div className="absolute inset-0 bg-black/90 backdrop-blur-md cursor-pointer" onClick={() => setPreviewItem(null)}></div>
-          <div className="relative bg-[#121212] border border-white/10 rounded-2xl w-full max-w-3xl flex flex-col md:flex-row overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.8)] z-10 p-6 md:p-8 gap-8 items-center md:items-stretch animate-fade-up" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
-            <button onClick={() => setPreviewItem(null)} className="cursor-pointer absolute top-4 right-4 text-gray-400 hover:text-white z-30 bg-white/5 rounded-full p-2 transition-colors border border-white/10 hover:bg-white/10">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-            <div className="w-[200px] md:w-[280px] shrink-0 flex items-center justify-center">
-              <div className="relative w-full aspect-[4/5] rounded-xl overflow-hidden shadow-2xl border border-white/10">
-                <img src={previewItem.image} alt={previewItem.title} className="absolute inset-0 w-full h-full object-cover"/>
+                <div className="flex-1 flex flex-col p-4">
+                  <h3 className="text-base font-bold text-white mb-1">{product.title}</h3>
+                  <span className="text-lg font-bold text-[#FFBF00] mb-4">${(parseFloat(product.price) || 0).toFixed(2)}</span>
+                  <div className="mt-auto grid grid-cols-2 gap-2">
+                    <button onClick={() => setPreviewItem(product)} className="cursor-pointer text-sm font-medium text-white border border-white/20 py-2 rounded hover:bg-white hover:text-black transition-colors">
+                      Preview
+                    </button>
+                    <button onClick={() => handleAddToCart(product)} className={`cursor-pointer text-sm font-medium py-2 rounded transition-colors ${addedItems[product.id] ? 'bg-green-500 text-white' : 'bg-[#FFBF00] text-black hover:bg-yellow-400'}`}>
+                      {addedItems[product.id] ? 'Added!' : 'Add to Cart'}
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="flex-1 flex flex-col justify-center py-4">
-              <span className="text-sm font-bold text-[#FFBF00] mb-2 tracking-widest uppercase">{previewItem.type}</span>
-              <h3 className="text-3xl font-bold text-white mb-4">{previewItem.title}</h3>
-              <p className="text-gray-300 text-base mb-8 leading-relaxed">{previewItem.desc}</p>
-              
-              <div className="flex items-center justify-between mt-auto pt-8 border-t border-white/10">
-                <span className="text-3xl font-bold text-white">${(parseFloat(previewItem.price) || 0).toFixed(2)}</span>
-                <button onClick={() => { handleAddToCart(previewItem); setPreviewItem(null); }} className="cursor-pointer bg-[#FFBF00] text-black font-bold py-3 px-8 rounded hover:bg-white transition-all shadow-[0_0_15px_rgba(255,191,0,0.2)]">
-                  Add to Cart
-                </button>
+            ))}
+          </div>
+        )}
+
+        {previewItem && (
+          <div className="fixed inset-0 z-[100] flex justify-center items-center px-4 animate-fade-up">
+            <div className="absolute inset-0 bg-black/90 backdrop-blur-md cursor-pointer" onClick={() => setPreviewItem(null)}></div>
+            <div className="relative bg-[#121212] border border-white/10 rounded-2xl w-full max-w-3xl flex flex-col md:flex-row overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.8)] z-10 p-6 md:p-8 gap-8 items-center md:items-stretch">
+              <button onClick={() => setPreviewItem(null)} className="cursor-pointer absolute top-4 right-4 text-gray-400 hover:text-white z-30 bg-white/5 rounded-full p-2 transition-colors border border-white/10 hover:bg-white/10">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+              <div className="w-[200px] md:w-[280px] shrink-0 flex items-center justify-center">
+                <div className="relative w-full aspect-[4/5] rounded-xl overflow-hidden shadow-2xl border border-white/10">
+                  <img src={previewItem.image} alt={previewItem.title} className="absolute inset-0 w-full h-full object-cover"/>
+                </div>
+              </div>
+              <div className="flex-1 flex flex-col justify-center py-4">
+                <span className="text-sm font-bold text-[#FFBF00] mb-2 tracking-widest uppercase">{previewItem.type}</span>
+                <h3 className="text-3xl font-bold text-white mb-4">{previewItem.title}</h3>
+                <p className="text-gray-300 text-base mb-8 leading-relaxed">{previewItem.desc}</p>
+                
+                {previewItem.documentUrl && (
+                  <div className="mb-6 p-3 bg-white/5 rounded border border-white/10 flex items-center justify-between">
+                    <a href={previewItem.documentUrl} download={previewItem.title} className="text-sm text-[#FFBF00] font-bold flex items-center gap-2 hover:underline">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                      Download Digital File Asset
+                    </a>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between mt-auto pt-8 border-t border-white/10">
+                  <span className="text-3xl font-bold text-white">${(parseFloat(previewItem.price) || 0).toFixed(2)}</span>
+                  <button onClick={() => { handleAddToCart(previewItem); setPreviewItem(null); }} className="cursor-pointer bg-[#FFBF00] text-black font-bold py-3 px-8 rounded hover:bg-white transition-all shadow-[0_0_15px_rgba(255,191,0,0.2)]">
+                    Add to Cart
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </>
+        )}
+      </div>
+    </div>
   );
 };
 
 const Cart = ({ cartItems, removeFromCart, user, showToast }) => {
   const navigate = useNavigate();
-  const [isProcessing, setIsProcessing] = useState(false);
   const total = cartItems.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
 
   const handleCheckout = async () => {
@@ -643,40 +648,35 @@ const Cart = ({ cartItems, removeFromCart, user, showToast }) => {
     }
     
     setIsProcessing(true);
-    
+    showToast("Redirecting to PayMongo...", "success");
+
     try {
       const response = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: total,
-          description: `Cart Order (${cartItems.length} items)`,
-          email: user.email,
-          name: user.email.split('@')[0]
+          description: `Shop Order (${cartItems.length} items)`,
+          email: user.email
         })
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to generate payment link.");
-      }
-
       const data = await response.json();
-      
+      if (!response.ok) throw new Error(data.error);
+
+      // Log the pending transaction to Firebase
       const newTransaction = {
-        user: user.email || "Guest",
+        user: user.email,
         type: "Purchase",
-        item: `Cart Order (${cartItems.length} items)`,
         amount: total,
-        date: new Date().toLocaleDateString(),
         status: "Pending",
-        checkoutUrl: data.checkoutUrl,
         timestamp: Date.now()
       };
-      
       await push(ref(db, 'transactions'), newTransaction);
-      
+
+      // Redirect user to PayMongo GCash page
       window.location.href = data.checkoutUrl;
-      
+
     } catch (err) {
       showToast(err.message, "error");
       setIsProcessing(false);
@@ -725,9 +725,8 @@ const Cart = ({ cartItems, removeFromCart, user, showToast }) => {
                 <span>Total</span>
                 <span>${total.toFixed(2)}</span>
               </div>
-              <button onClick={handleCheckout} disabled={isProcessing} className="cursor-pointer w-full bg-[#FFBF00] text-black font-bold text-lg py-3 rounded hover:bg-white transition-all disabled:opacity-50 flex items-center justify-center gap-2">
-                {isProcessing && <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>}
-                {isProcessing ? 'Processing...' : 'Proceed to Checkout'}
+              <button onClick={handleCheckout} className="cursor-pointer w-full bg-[#FFBF00] text-black font-bold text-lg py-3 rounded hover:bg-white transition-all">
+                Proceed to Checkout
               </button>
             </div>
           </div>
@@ -858,8 +857,7 @@ const Admin = ({ showToast }) => {
     if (adminSelectedDate && adminSelectedService) {
       const slotsRef = ref(db, `availability/${adminSelectedService}/${currentYear}/${currentMonth}/${adminSelectedDate}`);
       onValue(slotsRef, (snapshot) => {
-        const val = snapshot.val();
-        setAdminSlots(val && Array.isArray(val) ? val : []);
+        setAdminSlots(snapshot.val() || []);
       }, (error) => console.error(error));
     }
   }, [adminSelectedDate, adminSelectedService, currentMonth, currentYear]);
@@ -977,353 +975,365 @@ const Admin = ({ showToast }) => {
   const displayProducts = dbData.products.length > 0 ? dbData.products : defaultProducts;
 
   return (
-    <>
-      <div className="w-full flex-1 flex flex-col md:flex-row border-t border-white/5 animate-fade-up">
-        <div className="w-full md:w-64 bg-[#0a0a0a] border-r border-white/5 p-6 flex flex-col gap-2 shrink-0">
-          
-          <div className="flex items-center justify-between mb-4 pl-3">
-            <h3 className="text-gray-500 text-[10px] font-bold tracking-widest uppercase">Admin Panel</h3>
-            <div className="flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full ${isLive ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
-              <span className="text-[9px] text-gray-500 font-mono uppercase">{isLive ? 'Live Sync' : 'Connecting'}</span>
-            </div>
-          </div>
-          
-          <button onClick={() => setActiveTab('bookings')} className={`cursor-pointer w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'bookings' ? 'bg-[#FFBF00]/10 text-[#FFBF00]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
-            Incoming Bookings
-          </button>
-          <button onClick={() => {setActiveTab('availability'); setAdminSelectedDate(null);}} className={`cursor-pointer w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'availability' ? 'bg-[#FFBF00]/10 text-[#FFBF00]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
-            Manage Availability
-          </button>
-          <button onClick={() => setActiveTab('shop')} className={`cursor-pointer w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'shop' ? 'bg-[#FFBF00]/10 text-[#FFBF00]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
-            Shop Inventory
-          </button>
-
-          <div className="mt-4 mb-2 border-t border-white/5 pt-4">
-            <h3 className="text-gray-500 text-[10px] font-bold tracking-widest uppercase mb-2 pl-3">Payments</h3>
-            <button onClick={() => { setActiveTab('payments'); setActiveSubTab('booking_transactions'); }} className={`cursor-pointer w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'payments' && activeSubTab === 'booking_transactions' ? 'bg-[#FFBF00]/10 text-[#FFBF00]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
-              Booking Transactions
-            </button>
-            <button onClick={() => { setActiveTab('payments'); setActiveSubTab('purchase_transactions'); }} className={`cursor-pointer w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'payments' && activeSubTab === 'purchase_transactions' ? 'bg-[#FFBF00]/10 text-[#FFBF00]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
-              Purchase Transactions
-            </button>
-          </div>
-
-          <div className="mt-auto pt-6 border-t border-white/5">
-            <Link to="/" className="cursor-pointer w-full flex items-center justify-between text-gray-500 text-sm hover:text-white transition-colors px-2">
-              Return to Site
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-            </Link>
+    <div className="w-full flex-1 flex flex-col md:flex-row animate-fade-up border-t border-white/5">
+      <div className="w-full md:w-64 bg-[#0a0a0a] border-r border-white/5 p-6 flex flex-col gap-2 shrink-0">
+        
+        <div className="flex items-center justify-between mb-4 pl-3">
+          <h3 className="text-gray-500 text-[10px] font-bold tracking-widest uppercase">Admin Panel</h3>
+          <div className="flex items-center gap-1.5" title="Database Connection Status">
+            <span className={`w-2 h-2 rounded-full ${isLive ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
+            <span className="text-[9px] text-gray-500 font-mono uppercase">{isLive ? 'Live Sync' : 'Connecting'}</span>
           </div>
         </div>
+        
+        <button onClick={() => setActiveTab('bookings')} className={`cursor-pointer w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'bookings' ? 'bg-[#FFBF00]/10 text-[#FFBF00]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+          Incoming Bookings
+        </button>
+        <button onClick={() => {setActiveTab('availability'); setAdminSelectedDate(null);}} className={`cursor-pointer w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'availability' ? 'bg-[#FFBF00]/10 text-[#FFBF00]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+          Manage Availability
+        </button>
+        <button onClick={() => setActiveTab('shop')} className={`cursor-pointer w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'shop' ? 'bg-[#FFBF00]/10 text-[#FFBF00]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+          Shop Inventory
+        </button>
 
-        <div className="flex-1 p-6 md:p-12 bg-[#050505]">
-          {activeTab === 'bookings' && (
-            <div className="max-w-4xl">
-              <h2 className="text-2xl font-bold text-white mb-6">Recent Bookings</h2>
-              <div className="bg-[#121212] border border-white/5 rounded-xl overflow-hidden">
-                {displayBookings.map((b, idx) => (
-                  <div key={b.id} className={`p-6 flex justify-between items-center ${idx !== displayBookings.length - 1 ? 'border-b border-white/5' : ''}`}>
-                    <div>
-                      <h4 className="text-white font-bold">
-                        {b.name}
-                        {typeof b.id === 'string' && b.id.includes('mock') && <span className="ml-2 bg-gray-800 text-gray-400 text-[10px] px-2 py-0.5 rounded border border-gray-700">DEMO</span>}
-                      </h4>
-                      <p className="text-gray-400 text-sm">{b.service}</p>
-                    </div>
-                    <div className="flex items-center gap-6">
-                      <div className="text-right hidden md:block">
-                        <span className={`text-xs font-bold px-2 py-1 rounded uppercase tracking-wider ${b.status === 'Confirmed' ? 'bg-green-500/20 text-green-500' : 'bg-yellow-500/20 text-yellow-500'}`}>{b.status}</span>
-                        <p className="text-white text-sm mt-1">{b.date} at {b.time}</p>
-                      </div>
-                      <button onClick={() => setSelectedBooking(b)} className="cursor-pointer bg-white/5 hover:bg-white/10 text-white text-xs font-bold py-2 px-4 rounded border border-white/10 transition-colors">
-                        View Details
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+        <div className="mt-4 mb-2 border-t border-white/5 pt-4">
+          <h3 className="text-gray-500 text-[10px] font-bold tracking-widest uppercase mb-2 pl-3">Payments</h3>
+          <button onClick={() => { setActiveTab('payments'); setActiveSubTab('booking_transactions'); }} className={`cursor-pointer w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'payments' && activeSubTab === 'booking_transactions' ? 'bg-[#FFBF00]/10 text-[#FFBF00]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+            Booking Transactions
+          </button>
+          <button onClick={() => { setActiveTab('payments'); setActiveSubTab('purchase_transactions'); }} className={`cursor-pointer w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'payments' && activeSubTab === 'purchase_transactions' ? 'bg-[#FFBF00]/10 text-[#FFBF00]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+            Purchase Transactions
+          </button>
+        </div>
 
-          {activeTab === 'availability' && (
-            <div className="max-w-4xl grid md:grid-cols-[300px_1fr] gap-12 items-start">
-              <div>
-                <h2 className="text-2xl font-bold text-white mb-2">Target Service</h2>
-                <p className="text-gray-400 text-sm mb-4">Select which service to modify availability for.</p>
-                
-                <select 
-                  value={adminSelectedService} 
-                  onChange={(e) => {setAdminSelectedService(Number(e.target.value)); setAdminSelectedDate(null);}} 
-                  className="w-full bg-[#121212] border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#FFBF00] mb-8"
-                >
-                  {services.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
-                </select>
-
-                <h2 className="text-lg font-bold text-white mb-2">Select Date</h2>
-                <div className="bg-[#121212] rounded-lg border border-white/10 p-5 shadow-xl">
-                  <div className="flex items-center justify-between mb-4 px-1">
-                    <span className="text-xs font-bold text-white">{monthsList[currentMonth]} {currentYear}</span>
-                    <div className="flex gap-2">
-                      <button onClick={handlePrevMonth} className="p-1 text-xs rounded bg-white/5 border border-white/10 text-gray-400 hover:text-white cursor-pointer">&larr;</button>
-                      <button onClick={handleNextMonth} className="p-1 text-xs rounded bg-white/5 border border-white/10 text-gray-400 hover:text-white cursor-pointer">&rarr;</button>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-7 gap-1 mb-2 text-center">
-                    {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
-                      <div key={i} className="text-gray-500 font-medium text-[10px] py-1">{day}</div>
-                    ))}
-                    {Array.from({ length: firstDayIndex }).map((_, i) => (
-                      <div key={`empty-${i}`} className="py-2"></div>
-                    ))}
-                    {Array.from({ length: daysInMonth }).map((_, i) => {
-                      const day = i + 1;
-                      const isSelected = adminSelectedDate === day;
-                      return (
-                        <div 
-                          key={day} 
-                          onClick={() => handleAdminDateClick(day)}
-                          className={`text-center py-2 rounded text-sm font-medium transition-colors cursor-pointer ${
-                            isSelected ? 'bg-[#FFBF00] text-black font-bold shadow-[0_0_10px_rgba(255,191,0,0.4)]' : 'text-white hover:bg-white/10'
-                          }`}
-                        >
-                          {day}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              {adminSelectedDate ? (
-                <div>
-                  <h2 className="text-2xl font-bold text-white mb-2">Manage Time Slots</h2>
-                  <p className="text-gray-400 text-sm mb-6">Toggle available times for {monthsList[currentMonth]} {adminSelectedDate}, {currentYear}.</p>
-                  <div className="bg-[#121212] border border-white/5 rounded-xl p-6">
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                      {standardTimeSlots.map(time => (
-                        <div 
-                          key={time} 
-                          onClick={() => handleToggleTimeSlot(time)}
-                          className={`cursor-pointer flex items-center justify-between p-3 border rounded transition-colors ${adminSlots.includes(time) ? 'border-[#FFBF00] bg-[#FFBF00]/5 text-white' : 'border-white/10 text-gray-500 hover:border-white/30'}`}
-                        >
-                          <span className="text-sm font-medium">{time}</span>
-                          {adminSlots.includes(time) && <div className="w-2 h-2 rounded-full bg-[#FFBF00]"></div>}
-                        </div>
-                      ))}
-                    </div>
-                    <button onClick={handleSaveSchedule} className="cursor-pointer bg-[#FFBF00] text-black font-bold py-2.5 px-8 rounded hover:bg-white transition-all mt-8 text-sm shadow-[0_0_15px_rgba(255,191,0,0.2)]">
-                      Save Schedule Layout
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full min-h-[300px] border border-dashed border-white/10 rounded-xl opacity-50">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                  <p className="text-gray-400 text-sm">Select a specific date on the real sync calendar context matrix.</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'shop' && (
-            <div className="max-w-4xl">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-white">Shop Inventory</h2>
-                <div className="flex gap-4">
-                  {dbData.products.length === 0 && (
-                    <button onClick={handleSeedProducts} className="cursor-pointer bg-[#1a1a1a] text-white text-sm font-bold py-2 px-4 rounded border border-white/10 hover:border-[#FFBF00] transition-colors">
-                      Seed Demo Products
-                    </button>
-                  )}
-                  <button onClick={() => setShowProductModal(true)} className="cursor-pointer bg-[#FFBF00] text-black text-sm font-bold py-2 px-4 rounded hover:bg-white transition-colors">
-                    + Add Product
-                  </button>
-                </div>
-              </div>
-              <div className="space-y-4">
-                {displayProducts.map(product => (
-                  <div key={product.id} className="bg-[#121212] border border-white/5 rounded-xl p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <img src={product.image} alt={product.title} className="w-12 h-12 rounded object-cover" />
-                      <div>
-                        <h4 className="text-white font-bold text-sm">
-                          {product.title}
-                          {typeof product.id === 'number' && <span className="ml-2 bg-gray-800 text-gray-400 text-[10px] px-2 py-0.5 rounded border border-gray-700">DEMO</span>}
-                        </h4>
-                        <p className="text-[#FFBF00] text-xs font-bold">${(parseFloat(product.price) || 0).toFixed(2)}</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      {typeof product.id !== 'number' && (
-                        <button onClick={() => {
-                          remove(ref(db, `products/${product.id}`)).then(()=> showToast("Product node removed.", "success"));
-                        }} className="cursor-pointer text-red-500 hover:bg-red-500 hover:text-white text-xs font-medium px-3 py-1.5 border border-red-500/30 rounded transition-colors">Delete</button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'payments' && (
-            <div className="max-w-4xl">
-              <h2 className="text-2xl font-bold text-white mb-2">
-                {activeSubTab === 'booking_transactions' ? 'Booking Transactions' : 'Purchase Transactions'}
-              </h2>
-              <p className="text-gray-400 text-sm mb-6">Overview of all successful and pending payments.</p>
-              
-              <div className="bg-[#121212] border border-white/5 rounded-xl overflow-hidden">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-white/5 text-gray-400 text-xs uppercase tracking-widest">
-                      <th className="p-4 font-bold">Transaction ID</th>
-                      <th className="p-4 font-bold">Customer</th>
-                      <th className="p-4 font-bold">Item</th>
-                      <th className="p-4 font-bold">Date</th>
-                      <th className="p-4 font-bold">Amount</th>
-                      <th className="p-4 font-bold">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-sm text-gray-300">
-                    {displayTransactions.filter(t => t.type === (activeSubTab === 'booking_transactions' ? 'Booking' : 'Purchase')).map(trx => (
-                      <tr key={trx.id} className="border-t border-white/5 hover:bg-white/5 transition-colors">
-                        <td className="p-4 font-mono text-xs">{trx.id}</td>
-                        <td className="p-4 text-white font-bold">{trx.user}</td>
-                        <td className="p-4">{trx.item}</td>
-                        <td className="p-4 text-gray-500">{trx.date}</td>
-                        <td className="p-4 font-bold text-[#FFBF00]">${(parseFloat(trx.amount) || 0).toFixed(2)}</td>
-                        <td className="p-4">
-                          <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider ${trx.status === 'Completed' ? 'bg-green-500/20 text-green-500' : 'bg-yellow-500/20 text-yellow-500'}`}>
-                            {trx.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+        <div className="mt-auto pt-6 border-t border-white/5">
+          <Link to="/" className="cursor-pointer w-full flex items-center justify-between text-gray-500 text-sm hover:text-white transition-colors px-2">
+            Return to Site
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+          </Link>
         </div>
       </div>
 
-      {selectedBooking && (
-        <div className="fixed inset-0 z-[100] flex justify-center items-center px-4" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999 }}>
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm cursor-pointer" onClick={() => setSelectedBooking(null)}></div>
-          <div className="relative bg-[#121212] border border-white/10 rounded-xl w-full max-w-lg p-8 shadow-2xl z-10 animate-fade-up" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
-            <button onClick={() => setSelectedBooking(null)} className="cursor-pointer absolute top-4 right-4 text-gray-400 hover:text-white">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-            <h3 className="text-2xl font-bold text-white mb-6 border-b border-white/10 pb-4">Booking Details</h3>
-            <div className="space-y-4 mb-8">
-              <div>
-                <span className="block text-gray-500 text-xs font-bold uppercase tracking-widest mb-1">Student Name</span>
-                <span className="text-white">{selectedBooking.name}</span>
-              </div>
-              <div>
-                <span className="block text-gray-500 text-xs font-bold uppercase tracking-widest mb-1">Contact Email</span>
-                <span className="text-[#FFBF00]">{selectedBooking.email}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <span className="block text-gray-500 text-xs font-bold uppercase tracking-widest mb-1">Service</span>
-                  <span className="text-white text-sm">{selectedBooking.service}</span>
-                </div>
-                <div>
-                  <span className="block text-gray-500 text-xs font-bold uppercase tracking-widest mb-1">Schedule</span>
-                  <span className="text-white text-sm">{selectedBooking.date} • {selectedBooking.time}</span>
-                </div>
-              </div>
-              <div className="bg-[#1a1a1a] p-4 rounded border border-white/5">
-                <span className="block text-gray-500 text-xs font-bold uppercase tracking-widest mb-2">Student Notes / Goals</span>
-                <p className="text-gray-300 text-sm leading-relaxed">{selectedBooking.notes}</p>
-              </div>
-            </div>
-            <div className="flex gap-4">
-              {selectedBooking.status === 'Pending' && !String(selectedBooking.id).includes('mock') && (
-                <button onClick={() => handleApproveBooking(selectedBooking.id)} className="flex-1 cursor-pointer bg-green-500/20 text-green-500 border border-green-500/30 font-bold py-2.5 rounded hover:bg-green-500 hover:text-white transition-all">
-                  Approve
-                </button>
-              )}
-              <button onClick={() => setSelectedBooking(null)} className="flex-1 cursor-pointer bg-white/5 text-white font-bold py-2.5 rounded border border-white/10 hover:bg-white/10 transition-all">
-                Close
-              </button>
-            </div>
+      <div className="flex-1 p-6 md:p-12 bg-[#050505]">
+        {!isLive ? (
+          <div className="flex h-full items-center justify-center">
+            <div className="w-8 h-8 border-4 border-[#FFBF00]/30 border-t-[#FFBF00] rounded-full animate-spin"></div>
           </div>
-        </div>
-      )}
-
-      {showProductModal && (
-        <div className="fixed inset-0 z-[100] flex justify-center items-center px-4" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999 }}>
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm cursor-pointer" onClick={() => !isUploading && setShowProductModal(false)}></div>
-          <div className="relative bg-[#121212] border border-white/10 rounded-xl w-full max-w-md p-8 shadow-2xl z-10 animate-fade-up" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
-            {!isUploading && (
-              <button onClick={() => setShowProductModal(false)} className="cursor-pointer absolute top-4 right-4 text-gray-400 hover:text-white">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
+        ) : (
+          <>
+            {activeTab === 'bookings' && (
+              <div className="animate-fade-up max-w-4xl">
+                <h2 className="text-2xl font-bold text-white mb-6">Recent Bookings</h2>
+                <div className="bg-[#121212] border border-white/5 rounded-xl overflow-hidden">
+                  {displayBookings.map((b, idx) => (
+                    <div key={b.id} className={`p-6 flex justify-between items-center ${idx !== displayBookings.length - 1 ? 'border-b border-white/5' : ''}`}>
+                      <div>
+                        <h4 className="text-white font-bold">
+                          {b.name}
+                          {typeof b.id === 'string' && b.id.includes('mock') && <span className="ml-2 bg-gray-800 text-gray-400 text-[10px] px-2 py-0.5 rounded border border-gray-700">DEMO</span>}
+                        </h4>
+                        <p className="text-gray-400 text-sm">{b.service}</p>
+                      </div>
+                      <div className="flex items-center gap-6">
+                        <div className="text-right hidden md:block">
+                          <span className={`text-xs font-bold px-2 py-1 rounded uppercase tracking-wider ${b.status === 'Confirmed' ? 'bg-green-500/20 text-green-500' : 'bg-yellow-500/20 text-yellow-500'}`}>{b.status}</span>
+                          <p className="text-white text-sm mt-1">{b.date} at {b.time}</p>
+                        </div>
+                        <button onClick={() => setSelectedBooking(b)} className="cursor-pointer bg-white/5 hover:bg-white/10 text-white text-xs font-bold py-2 px-4 rounded border border-white/10 transition-colors">
+                          View Details
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
-            <h3 className="text-2xl font-bold text-white mb-6 border-b border-white/10 pb-4">Add New Product</h3>
-            <form onSubmit={handleAddProductSubmit} className="space-y-4">
-              <div>
-                <label className="block text-white text-sm font-medium mb-1">Product Title</label>
-                <input type="text" required value={newProduct.title} onChange={e => setNewProduct({...newProduct, title: e.target.value})} disabled={isUploading} className="w-full bg-[#1a1a1a] border border-white/10 rounded px-4 py-2 text-white focus:outline-none focus:border-[#FFBF00] disabled:opacity-50" placeholder="e.g. Masterclass PDF" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-white text-sm font-medium mb-1">Price ($)</label>
-                  <input type="number" step="0.01" required value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} disabled={isUploading} className="w-full bg-[#1a1a1a] border border-white/10 rounded px-4 py-2 text-white focus:outline-none focus:border-[#FFBF00] disabled:opacity-50" placeholder="29.99" />
-                </div>
-                <div>
-                  <label className="block text-white text-sm font-medium mb-1">Type</label>
-                  <select value={newProduct.type} onChange={e => setNewProduct({...newProduct, type: e.target.value})} disabled={isUploading} className="w-full bg-[#1a1a1a] border border-white/10 rounded px-4 py-2.5 text-white focus:outline-none focus:border-[#FFBF00] disabled:opacity-50">
-                    <option value="eBook">eBook</option>
-                    <option value="Digital Guide">Digital Guide</option>
-                    <option value="Physical Book">Physical Book</option>
-                    <option value="Video Course">Video Course</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-white text-sm font-medium mb-1">Cover Image</label>
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  disabled={isUploading}
-                  onChange={e => setNewProduct({...newProduct, imageFile: e.target.files[0]})} 
-                  className="w-full bg-[#1a1a1a] border border-white/10 rounded px-4 py-2 text-gray-400 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-[#FFBF00] file:text-black hover:file:bg-white transition-colors cursor-pointer disabled:opacity-50" 
-                />
-              </div>
 
-              <div>
-                <label className="block text-white text-sm font-medium mb-1">Digital Resource (PDF/Doc)</label>
-                <input 
-                  type="file" 
-                  accept=".pdf,.doc,.docx" 
-                  disabled={isUploading}
-                  onChange={e => setNewProduct({...newProduct, docFile: e.target.files[0]})} 
-                  className="w-full bg-[#1a1a1a] border border-white/10 rounded px-4 py-2 text-gray-400 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-gray-700 file:text-white hover:file:bg-gray-600 transition-colors cursor-pointer disabled:opacity-50" 
-                />
+            {selectedBooking && (
+              <div className="fixed inset-0 z-[100] flex justify-center items-center px-4 animate-fade-up">
+                <div className="absolute inset-0 bg-black/80 backdrop-blur-sm cursor-pointer" onClick={() => setSelectedBooking(null)}></div>
+                <div className="relative bg-[#121212] border border-white/10 rounded-xl w-full max-w-lg p-8 shadow-2xl z-10">
+                  <button onClick={() => setSelectedBooking(null)} className="cursor-pointer absolute top-4 right-4 text-gray-400 hover:text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                  <h3 className="text-2xl font-bold text-white mb-6 border-b border-white/10 pb-4">Booking Details</h3>
+                  <div className="space-y-4 mb-8">
+                    <div>
+                      <span className="block text-gray-500 text-xs font-bold uppercase tracking-widest mb-1">Student Name</span>
+                      <span className="text-white">{selectedBooking.name}</span>
+                    </div>
+                    <div>
+                      <span className="block text-gray-500 text-xs font-bold uppercase tracking-widest mb-1">Contact Email</span>
+                      <span className="text-[#FFBF00]">{selectedBooking.email}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <span className="block text-gray-500 text-xs font-bold uppercase tracking-widest mb-1">Service</span>
+                        <span className="text-white text-sm">{selectedBooking.service}</span>
+                      </div>
+                      <div>
+                        <span className="block text-gray-500 text-xs font-bold uppercase tracking-widest mb-1">Schedule</span>
+                        <span className="text-white text-sm">{selectedBooking.date} • {selectedBooking.time}</span>
+                      </div>
+                    </div>
+                    <div className="bg-[#1a1a1a] p-4 rounded border border-white/5">
+                      <span className="block text-gray-500 text-xs font-bold uppercase tracking-widest mb-2">Student Notes / Goals</span>
+                      <p className="text-gray-300 text-sm leading-relaxed">{selectedBooking.notes}</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-4">
+                    {selectedBooking.status === 'Pending' && !String(selectedBooking.id).includes('mock') && (
+                      <button onClick={() => handleApproveBooking(selectedBooking.id)} className="flex-1 cursor-pointer bg-green-500/20 text-green-500 border border-green-500/30 font-bold py-2.5 rounded hover:bg-green-500 hover:text-white transition-all">
+                        Approve
+                      </button>
+                    )}
+                    <button onClick={() => setSelectedBooking(null)} className="flex-1 cursor-pointer bg-white/5 text-white font-bold py-2.5 rounded border border-white/10 hover:bg-white/10 transition-all">
+                      Close
+                    </button>
+                  </div>
+                </div>
               </div>
-              
-              <div>
-                <label className="block text-white text-sm font-medium mb-1">Description</label>
-                <textarea rows="3" required value={newProduct.desc} onChange={e => setNewProduct({...newProduct, desc: e.target.value})} disabled={isUploading} className="w-full bg-[#1a1a1a] border border-white/10 rounded px-4 py-2 text-white focus:outline-none focus:border-[#FFBF00] resize-none disabled:opacity-50" placeholder="Provide a summary of the resource..."></textarea>
+            )}
+
+            {activeTab === 'availability' && (
+              <div className="animate-fade-up max-w-4xl grid md:grid-cols-[300px_1fr] gap-12 items-start">
+                <div>
+                  <h2 className="text-2xl font-bold text-white mb-2">Target Service</h2>
+                  <p className="text-gray-400 text-sm mb-4">Select which service to modify availability for.</p>
+                  
+                  <select 
+                    value={adminSelectedService} 
+                    onChange={(e) => {setAdminSelectedService(Number(e.target.value)); setAdminSelectedDate(null);}} 
+                    className="w-full bg-[#121212] border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#FFBF00] mb-8"
+                  >
+                    {services.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
+                  </select>
+
+                  <h2 className="text-lg font-bold text-white mb-2">Select Date</h2>
+                  <div className="bg-[#121212] rounded-lg border border-white/10 p-5 shadow-xl">
+                    <div className="flex items-center justify-between mb-4 px-1">
+                      <span className="text-xs font-bold text-white">{monthsList[currentMonth]} {currentYear}</span>
+                      <div className="flex gap-2">
+                        <button onClick={handlePrevMonth} className="p-1 text-xs rounded bg-white/5 border border-white/10 text-gray-400 hover:text-white cursor-pointer">&larr;</button>
+                        <button onClick={handleNextMonth} className="p-1 text-xs rounded bg-white/5 border border-white/10 text-gray-400 hover:text-white cursor-pointer">&rarr;</button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-7 gap-1 mb-2 text-center">
+                      {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
+                        <div key={i} className="text-gray-500 font-medium text-[10px] py-1">{day}</div>
+                      ))}
+                      {Array.from({ length: firstDayIndex }).map((_, i) => (
+                        <div key={`empty-${i}`} className="py-2"></div>
+                      ))}
+                      {Array.from({ length: daysInMonth }).map((_, i) => {
+                        const day = i + 1;
+                        const isSelected = adminSelectedDate === day;
+                        return (
+                          <div 
+                            key={day} 
+                            onClick={() => handleAdminDateClick(day)}
+                            className={`text-center py-2 rounded text-sm font-medium transition-colors cursor-pointer ${
+                              isSelected ? 'bg-[#FFBF00] text-black font-bold shadow-[0_0_10px_rgba(255,191,0,0.4)]' : 'text-white hover:bg-white/10'
+                            }`}
+                          >
+                            {day}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {adminSelectedDate ? (
+                  <div className="animate-fade-up">
+                    <h2 className="text-2xl font-bold text-white mb-2">Manage Time Slots</h2>
+                    <p className="text-gray-400 text-sm mb-6">Toggle available times for {monthsList[currentMonth]} {adminSelectedDate}, {currentYear}.</p>
+                    <div className="bg-[#121212] border border-white/5 rounded-xl p-6">
+                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                        {standardTimeSlots.map(time => (
+                          <div 
+                            key={time} 
+                            onClick={() => handleToggleTimeSlot(time)}
+                            className={`cursor-pointer flex items-center justify-between p-3 border rounded transition-colors ${adminSlots.includes(time) ? 'border-[#FFBF00] bg-[#FFBF00]/5 text-white' : 'border-white/10 text-gray-500 hover:border-white/30'}`}
+                          >
+                            <span className="text-sm font-medium">{time}</span>
+                            {adminSlots.includes(time) && <div className="w-2 h-2 rounded-full bg-[#FFBF00]"></div>}
+                          </div>
+                        ))}
+                      </div>
+                      <button onClick={handleSaveSchedule} className="cursor-pointer bg-[#FFBF00] text-black font-bold py-2.5 px-8 rounded hover:bg-white transition-all mt-8 text-sm shadow-[0_0_15px_rgba(255,191,0,0.2)]">
+                        Save Schedule Layout
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full min-h-[300px] border border-dashed border-white/10 rounded-xl opacity-50">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    <p className="text-gray-400 text-sm">Select a specific date on the real sync calendar context matrix.</p>
+                  </div>
+                )}
               </div>
-              <button type="submit" disabled={isUploading} className="w-full cursor-pointer bg-[#FFBF00] text-black font-bold py-3 rounded hover:bg-white transition-all mt-2 disabled:opacity-50 flex items-center justify-center gap-2">
-                {isUploading && <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>}
-                {isUploading ? 'Encoding to Base64...' : 'Upload Product'}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-    </>
+            )}
+
+            {activeTab === 'shop' && (
+              <div className="animate-fade-up max-w-4xl">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold text-white">Shop Inventory</h2>
+                  <div className="flex gap-4">
+                    {dbData.products.length === 0 && (
+                      <button onClick={handleSeedProducts} className="cursor-pointer bg-[#1a1a1a] text-white text-sm font-bold py-2 px-4 rounded border border-white/10 hover:border-[#FFBF00] transition-colors">
+                        Seed Demo Products
+                      </button>
+                    )}
+                    <button onClick={() => setShowProductModal(true)} className="cursor-pointer bg-[#FFBF00] text-black text-sm font-bold py-2 px-4 rounded hover:bg-white transition-colors">
+                      + Add Product
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  {displayProducts.map(product => (
+                    <div key={product.id} className="bg-[#121212] border border-white/5 rounded-xl p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <img src={product.image} alt={product.title} className="w-12 h-12 rounded object-cover" />
+                        <div>
+                          <h4 className="text-white font-bold text-sm">
+                            {product.title}
+                            {typeof product.id === 'number' && <span className="ml-2 bg-gray-800 text-gray-400 text-[10px] px-2 py-0.5 rounded border border-gray-700">DEMO</span>}
+                          </h4>
+                          <p className="text-[#FFBF00] text-xs font-bold">${(parseFloat(product.price) || 0).toFixed(2)}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        {typeof product.id !== 'number' && (
+                          <button onClick={() => {
+                            remove(ref(db, `products/${product.id}`)).then(()=> showToast("Product node removed.", "success"));
+                          }} className="cursor-pointer text-red-500 hover:bg-red-500 hover:text-white text-xs font-medium px-3 py-1.5 border border-red-500/30 rounded transition-colors">Delete</button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {showProductModal && (
+              <div className="fixed inset-0 z-[100] flex justify-center items-center px-4 animate-fade-up">
+                <div className="absolute inset-0 bg-black/80 backdrop-blur-sm cursor-pointer" onClick={() => !isUploading && setShowProductModal(false)}></div>
+                <div className="relative bg-[#121212] border border-white/10 rounded-xl w-full max-w-md p-8 shadow-2xl z-10">
+                  {!isUploading && (
+                    <button onClick={() => setShowProductModal(false)} className="cursor-pointer absolute top-4 right-4 text-gray-400 hover:text-white">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  )}
+                  <h3 className="text-2xl font-bold text-white mb-6 border-b border-white/10 pb-4">Add New Product</h3>
+                  <form onSubmit={handleAddProductSubmit} className="space-y-4">
+                    <div>
+                      <label className="block text-white text-sm font-medium mb-1">Product Title</label>
+                      <input type="text" required value={newProduct.title} onChange={e => setNewProduct({...newProduct, title: e.target.value})} disabled={isUploading} className="w-full bg-[#1a1a1a] border border-white/10 rounded px-4 py-2 text-white focus:outline-none focus:border-[#FFBF00] disabled:opacity-50" placeholder="e.g. Masterclass PDF" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-white text-sm font-medium mb-1">Price ($)</label>
+                        <input type="number" step="0.01" required value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} disabled={isUploading} className="w-full bg-[#1a1a1a] border border-white/10 rounded px-4 py-2 text-white focus:outline-none focus:border-[#FFBF00] disabled:opacity-50" placeholder="29.99" />
+                      </div>
+                      <div>
+                        <label className="block text-white text-sm font-medium mb-1">Type</label>
+                        <select value={newProduct.type} onChange={e => setNewProduct({...newProduct, type: e.target.value})} disabled={isUploading} className="w-full bg-[#1a1a1a] border border-white/10 rounded px-4 py-2.5 text-white focus:outline-none focus:border-[#FFBF00] disabled:opacity-50">
+                          <option value="eBook">eBook</option>
+                          <option value="Digital Guide">Digital Guide</option>
+                          <option value="Physical Book">Physical Book</option>
+                          <option value="Video Course">Video Course</option>
+                        </select>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-white text-sm font-medium mb-1">Cover Image</label>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        disabled={isUploading}
+                        onChange={e => setNewProduct({...newProduct, imageFile: e.target.files[0]})} 
+                        className="w-full bg-[#1a1a1a] border border-white/10 rounded px-4 py-2 text-gray-400 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-[#FFBF00] file:text-black hover:file:bg-white transition-colors cursor-pointer disabled:opacity-50" 
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-white text-sm font-medium mb-1">Digital Resource (PDF/Doc)</label>
+                      <input 
+                        type="file" 
+                        accept=".pdf,.doc,.docx" 
+                        disabled={isUploading}
+                        onChange={e => setNewProduct({...newProduct, docFile: e.target.files[0]})} 
+                        className="w-full bg-[#1a1a1a] border border-white/10 rounded px-4 py-2 text-gray-400 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-gray-700 file:text-white hover:file:bg-gray-600 transition-colors cursor-pointer disabled:opacity-50" 
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-white text-sm font-medium mb-1">Description</label>
+                      <textarea rows="3" required value={newProduct.desc} onChange={e => setNewProduct({...newProduct, desc: e.target.value})} disabled={isUploading} className="w-full bg-[#1a1a1a] border border-white/10 rounded px-4 py-2 text-white focus:outline-none focus:border-[#FFBF00] resize-none disabled:opacity-50" placeholder="Provide a summary of the resource..."></textarea>
+                    </div>
+                    <button type="submit" disabled={isUploading} className="w-full cursor-pointer bg-[#FFBF00] text-black font-bold py-3 rounded hover:bg-white transition-all mt-2 disabled:opacity-50 flex items-center justify-center gap-2">
+                      {isUploading && <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>}
+                      {isUploading ? 'Encoding to Base64...' : 'Upload Product'}
+                    </button>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'payments' && (
+              <div className="animate-fade-up max-w-4xl">
+                <h2 className="text-2xl font-bold text-white mb-2">
+                  {activeSubTab === 'booking_transactions' ? 'Booking Transactions' : 'Purchase Transactions'}
+                </h2>
+                <p className="text-gray-400 text-sm mb-6">Overview of all successful and pending payments.</p>
+                
+                <div className="bg-[#121212] border border-white/5 rounded-xl overflow-hidden">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-white/5 text-gray-400 text-xs uppercase tracking-widest">
+                        <th className="p-4 font-bold">Transaction ID</th>
+                        <th className="p-4 font-bold">Customer</th>
+                        <th className="p-4 font-bold">Item</th>
+                        <th className="p-4 font-bold">Date</th>
+                        <th className="p-4 font-bold">Amount</th>
+                        <th className="p-4 font-bold">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-sm text-gray-300">
+                      {displayTransactions.filter(t => t.type === (activeSubTab === 'booking_transactions' ? 'Booking' : 'Purchase')).map(trx => (
+                        <tr key={trx.id} className="border-t border-white/5 hover:bg-white/5 transition-colors">
+                          <td className="p-4 font-mono text-xs">{trx.id}</td>
+                          <td className="p-4 text-white font-bold">{trx.user}</td>
+                          <td className="p-4">{trx.item}</td>
+                          <td className="p-4 text-gray-500">{trx.date}</td>
+                          <td className="p-4 font-bold text-[#FFBF00]">${(parseFloat(trx.amount) || 0).toFixed(2)}</td>
+                          <td className="p-4">
+                            <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider ${trx.status === 'Completed' ? 'bg-green-500/20 text-green-500' : 'bg-yellow-500/20 text-yellow-500'}`}>
+                              {trx.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
   );
 };
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+}
 
 const NavBar = ({ cartItems, user, setUser }) => {
   const location = useLocation();
@@ -1422,7 +1432,7 @@ function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
-      <div className="min-h-screen bg-[#0a0a0a] text-gray-200 font-sans selection:bg-[#FFBF00] selection:text-black flex flex-col overflow-x-hidden relative">
+      <div className="min-h-screen bg-[#0a0a0a] text-gray-200 font-sans selection:bg-[#FFBF00] selection:text-black flex flex-col overflow-x-hidden">
         
         <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: null, type: 'success' })} />
         <NavBar cartItems={cartItems} user={user} setUser={setUser} />
