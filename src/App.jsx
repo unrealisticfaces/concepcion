@@ -641,47 +641,53 @@ const Cart = ({ cartItems, removeFromCart, user, showToast }) => {
   const total = cartItems.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
 
   const handleCheckout = async () => {
-    if (!user) {
-      showToast("Log in to proceed to checkout.", "error");
-      navigate('/login?redirect=/cart');
-      return;
-    }
-    
-    setIsProcessing(true);
-    showToast("Redirecting to PayMongo...", "success");
+  if (!user) {
+    showToast("Log in to proceed to checkout.", "error");
+    navigate('/login?redirect=/cart');
+    return;
+  }
 
-    try {
-      const response = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: total,
-          description: `Shop Order (${cartItems.length} items)`,
-          email: user.email
-        })
-      });
+  try {
+    showToast("Redirecting to GCash...", "success");
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error);
-
-      // Log the pending transaction to Firebase
-      const newTransaction = {
-        user: user.email,
-        type: "Purchase",
+    const response = await fetch('/api/checkout', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
         amount: total,
-        status: "Pending",
-        timestamp: Date.now()
-      };
-      await push(ref(db, 'transactions'), newTransaction);
+        description: `Cart Order (${cartItems.length} items)`
+      })
+    });
 
-      // Redirect user to PayMongo GCash page
-      window.location.href = data.checkoutUrl;
+    const data = await response.json();
 
-    } catch (err) {
-      showToast(err.message, "error");
-      setIsProcessing(false);
+    if (!response.ok) {
+      throw new Error(data.error || 'Payment failed');
     }
-  };
+
+    // Save transaction to Firebase
+    const newTransaction = {
+      user: user.email || "Guest",
+      type: "Purchase",
+      item: `Cart Order (${cartItems.length} items)`,
+      amount: total,
+      date: new Date().toLocaleDateString(),
+      status: "Pending",
+      timestamp: Date.now()
+    };
+
+    await push(ref(db, 'transactions'), newTransaction);
+
+    // Redirect to PayMongo GCash checkout
+    window.location.href = data.checkoutUrl;
+
+  } catch (error) {
+    console.error(error);
+    showToast(error.message, "error");
+  }
+};
 
   return (
     <div className="w-full py-12 px-6 flex justify-center animate-fade-up">
