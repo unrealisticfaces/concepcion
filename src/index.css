@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+/* 1. FORCE VERTICAL SCROLLBAR TO PREVENT PAGE JUMPING */
+html {
+  overflow-y: scroll;
+}
+
+/* 2. Page Load Animation */
+.animate-fade-up {
+  animation: fadeUp 0.5s ease-out forwards;
+  opacity: 0;
+}
+
+@keyframes fadeUp {
+  0% { opacity: 0; transform: translateY(15px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* 3. Infinite Scrolling Animation for Testimonials */
+.animate-scrolling-track {
+  display: flex;
+  width: max-content;
+  animation: scroll 40s linear infinite;
+}
+
+.animate-scrolling-track:hover {
+  animation-play-state: paused;
+}
+
+@keyframes scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
