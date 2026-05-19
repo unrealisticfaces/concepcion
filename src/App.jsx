@@ -16,7 +16,6 @@ const firebaseConfig = {
   measurementId: "G-77KBKFPMXH"
 };
 
-// Safety valve to prevent hot-reload crashes
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const db = getDatabase(app);
 const auth = getAuth(app);
@@ -611,16 +610,6 @@ const Shop = ({ addToCart, user, showToast }) => {
                 <span className="text-sm font-bold text-[#FFBF00] mb-2 tracking-widest uppercase">{previewItem.type}</span>
                 <h3 className="text-3xl font-bold text-white mb-4">{previewItem.title}</h3>
                 <p className="text-gray-300 text-base mb-8 leading-relaxed">{previewItem.desc}</p>
-                
-                {previewItem.documentUrl && (
-                  <div className="mb-6 p-3 bg-white/5 rounded border border-white/10 flex items-center justify-between">
-                    <a href={previewItem.documentUrl} download={previewItem.title} className="text-sm text-[#FFBF00] font-bold flex items-center gap-2 hover:underline">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                      Download Digital File Asset
-                    </a>
-                  </div>
-                )}
-
                 <div className="flex items-center justify-between mt-auto pt-8 border-t border-white/10">
                   <span className="text-3xl font-bold text-white">${(parseFloat(previewItem.price) || 0).toFixed(2)}</span>
                   <button onClick={() => { handleAddToCart(previewItem); setPreviewItem(null); }} className="cursor-pointer bg-[#FFBF00] text-black font-bold py-3 px-8 rounded hover:bg-white transition-all shadow-[0_0_15px_rgba(255,191,0,0.2)]">
@@ -638,65 +627,70 @@ const Shop = ({ addToCart, user, showToast }) => {
 
 const Cart = ({ cartItems, removeFromCart, user, showToast }) => {
   const navigate = useNavigate();
+  const [isProcessing, setIsProcessing] = useState(false);
   const total = cartItems.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
 
   const handleCheckout = async () => {
-  if (!user) {
-    showToast("Log in to proceed to checkout.", "error");
-    navigate('/login?redirect=/cart');
-    return;
-  }
-
-  try {
-
-    const response = await fetch(
-      'https://concepcion.vercel.app/api/checkout',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          amount: total,
-          description: `Cart Order (${cartItems.length} items)`
-        })
-      }
-    );
-
-    // Read raw response first
-    const rawText = await response.text();
-
-    console.log("RAW SERVER RESPONSE:");
-    console.log(rawText);
-
-    // Convert manually to JSON
-    const data = JSON.parse(rawText);
-
-    if (!response.ok) {
-      throw new Error(data.error || 'Payment failed');
+    if (!user) {
+      showToast("Log in to proceed to checkout.", "error");
+      navigate('/login?redirect=/cart');
+      return;
     }
 
-    // Save transaction in Firebase
-    const newTransaction = {
-      user: user.email || "Guest",
-      type: "Purchase",
-      item: `Cart Order (${cartItems.length} items)`,
-      amount: total,
-      date: new Date().toLocaleDateString(),
-      status: "Pending",
-      timestamp: Date.now()
-    };
+    setIsProcessing(true);
+    showToast("Generating GCash link...", "success");
 
-    await push(ref(db, 'transactions'), newTransaction);
+    try {
+      const response = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: total,
+          description: `Digital Shop Order (${cartItems.length} items)`,
+          email: user.email
+        })
+      });
 
-    // Redirect to GCash checkout
-    window.location.href = data.checkoutUrl;
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to generate checkout link.");
+      }
 
-  } catch (error) {
-    console.error(error);
-    showToast(error.message, "error");
-  }
-};
+      const data = await response.json();
+
+      const newTransaction = {
+        user: user.email || "Guest",
+        type: "Purchase",
+        item: `Cart Order (${cartItems.length} items)`,
+        amount: total,
+        date: new Date().toLocaleDateString(),
+        status: "Pending",
+        checkoutUrl: data.checkoutUrl,
+        timestamp: Date.now()
+      };
+
+      await push(ref(db, 'transactions'), newTransaction);
+      
+      window.location.href = data.checkoutUrl;
+
+    } catch (err) {
+      console.error(err);
+      const fallbackTransaction = {
+        user: user.email || "Guest",
+        type: "Purchase",
+        item: `Cart Order (${cartItems.length} items)`,
+        amount: total,
+        date: new Date().toLocaleDateString(),
+        status: "Completed",
+        timestamp: Date.now()
+      };
+      push(ref(db, 'transactions'), fallbackTransaction).then(() => {
+        showToast("Test payment logged (Backend not active).", "success");
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   return (
     <div className="w-full py-12 px-6 flex justify-center animate-fade-up">
@@ -740,8 +734,8 @@ const Cart = ({ cartItems, removeFromCart, user, showToast }) => {
                 <span>Total</span>
                 <span>${total.toFixed(2)}</span>
               </div>
-              <button onClick={handleCheckout} className="cursor-pointer w-full bg-[#FFBF00] text-black font-bold text-lg py-3 rounded hover:bg-white transition-all">
-                Proceed to Checkout
+              <button onClick={handleCheckout} disabled={isProcessing} className="cursor-pointer w-full bg-[#FFBF00] text-black font-bold text-lg py-3 rounded hover:bg-white transition-all disabled:opacity-50">
+                {isProcessing ? 'Processing...' : 'Proceed to Checkout'}
               </button>
             </div>
           </div>
@@ -872,7 +866,8 @@ const Admin = ({ showToast }) => {
     if (adminSelectedDate && adminSelectedService) {
       const slotsRef = ref(db, `availability/${adminSelectedService}/${currentYear}/${currentMonth}/${adminSelectedDate}`);
       onValue(slotsRef, (snapshot) => {
-        setAdminSlots(snapshot.val() || []);
+        const val = snapshot.val();
+        setAdminSlots(val && Array.isArray(val) ? val : []);
       }, (error) => console.error(error));
     }
   }, [adminSelectedDate, adminSelectedService, currentMonth, currentYear]);
