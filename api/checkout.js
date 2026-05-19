@@ -1,42 +1,48 @@
-export default async function handler(req, res) {
-  // Only allow POST requests from your React frontend
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
-
-  const { amount, description } = req.body;
-  
-  // PayMongo strictly requires the amount in centavos (e.g., $10.00 = 1000)
-  const amountInCents = Math.round(amount * 100);
-
-  // Build the request using your secret key hidden in Vercel's Environment Variables
-  const options = {
-    method: 'POST',
-    headers: {
-      accept: 'application/json',
-      'content-type': 'application/json',
-      authorization: `Basic ${Buffer.from(process.env.PAYMONGO_SECRET_KEY + ':').toString('base64')}`
-    },
-    body: JSON.stringify({
-      data: {
-        attributes: {
-          amount: amountInCents,
-          description: description,
-          payment_method_allowed: ['gcash'], // Explicitly targeting GCash
-          currency: 'PHP'
-        }
-      }
-    })
-  };
+const handleCheckout = async () => {
+  if (!user) {
+    showToast("Log in to proceed to checkout.", "error");
+    navigate('/login?redirect=/cart');
+    return;
+  }
 
   try {
-    // Generate the secure GCash link
-    const response = await fetch('https://api.paymongo.com/v1/links', options);
-    const data = await response.json();
-    
-    if (data.errors) throw new Error(data.errors[0].detail);
+    showToast("Redirecting to GCash...", "success");
 
-    // Send the payment link back to React so it can redirect the user
-    res.status(200).json({ checkoutUrl: data.data.attributes.checkout_url });
+    const response = await fetch('/api/checkout', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        amount: total,
+        description: `Cart Order (${cartItems.length} items)`
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Payment failed');
+    }
+
+    // Save transaction to Firebase
+    const newTransaction = {
+      user: user.email || "Guest",
+      type: "Purchase",
+      item: `Cart Order (${cartItems.length} items)`,
+      amount: total,
+      date: new Date().toLocaleDateString(),
+      status: "Pending",
+      timestamp: Date.now()
+    };
+
+    await push(ref(db, 'transactions'), newTransaction);
+
+    // Redirect to PayMongo GCash checkout
+    window.location.href = data.checkoutUrl;
+
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    showToast(error.message, "error");
   }
-}
+};
