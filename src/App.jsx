@@ -663,17 +663,33 @@ const Cart = ({ cartItems, removeFromCart, user, showToast }) => {
       }
     );
 
-    // IMPORTANT
-    const text = await response.text();
+    // Read raw response first
+    const rawText = await response.text();
 
-    console.log(text);
+    console.log("RAW SERVER RESPONSE:");
+    console.log(rawText);
 
-    const data = JSON.parse(text);
+    // Convert manually to JSON
+    const data = JSON.parse(rawText);
 
     if (!response.ok) {
       throw new Error(data.error || 'Payment failed');
     }
 
+    // Save transaction in Firebase
+    const newTransaction = {
+      user: user.email || "Guest",
+      type: "Purchase",
+      item: `Cart Order (${cartItems.length} items)`,
+      amount: total,
+      date: new Date().toLocaleDateString(),
+      status: "Pending",
+      timestamp: Date.now()
+    };
+
+    await push(ref(db, 'transactions'), newTransaction);
+
+    // Redirect to GCash checkout
     window.location.href = data.checkoutUrl;
 
   } catch (error) {

@@ -29,5 +29,10 @@
     "postcss": "^8.5.14",
     "tailwindcss": "^4.3.0",
     "vite": "^8.0.12"
+  },
+  "functions": {
+    "api/*.js": {
+      "runtime": "@vercel/node"
+    }
   }
 }
