@@ -759,35 +759,36 @@ const UserDashboard = ({ user }) => {
       return;
     }
 
+    const bookingsRef = ref(db, 'bookings');
     const trxRef = ref(db, 'transactions');
 
-    // This listener watches your database in real-time
-    const unsubscribe = onValue(trxRef, (snapshot) => {
+    const unsubB = onValue(bookingsRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
         const list = Object.keys(data).map(k => ({ id: k, ...data[k] }));
-        
-        // Filter for this specific user's transactions
+        setMyBookings(list.filter(b => b.email === user.email).reverse());
+      } else {
+        setMyBookings([]);
+      }
+    });
+
+    const unsubT = onValue(trxRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list = Object.keys(data).map(k => ({ id: k, ...data[k] }));
         const userTrxs = list.filter(t => t.user === user.email);
         setMyTransactions(userTrxs.reverse());
-
-        // AUTO-REDIRECT TRIGGER:
-        // Check if any transaction just turned 'Completed'
-        const hasNewCompletion = userTrxs.some(t => t.status === 'Completed');
-        
-        if (hasNewCompletion) {
-          console.log("Payment confirmed: Status is now Completed.");
-          // If you need them to stay on the dashboard, you don't need to do anything!
-          // The UI will re-render automatically because 'setMyTransactions' was called.
-        }
+      } else {
+        setMyTransactions([]);
       }
       setIsLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubB();
+      unsubT();
+    };
   }, [user, navigate]);
-
-  // ... rest of your return() code ...
 
   if (isLoading) {
     return (
