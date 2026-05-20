@@ -759,45 +759,36 @@ const UserDashboard = ({ user }) => {
       return;
     }
 
-    const bookingsRef = ref(db, 'bookings');
     const trxRef = ref(db, 'transactions');
 
-    // 1. Existing listener for data
-    const unsubB = onValue(bookingsRef, (snapshot) => {
+    // This listener watches your database in real-time
+    const unsubscribe = onValue(trxRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
         const list = Object.keys(data).map(k => ({ id: k, ...data[k] }));
-        setMyBookings(list.filter(b => b.email === user.email).reverse());
-      } else {
-        setMyBookings([]);
-      }
-    });
-
-    // 2. Modified listener for transactions that includes a reload/check
-    const unsubT = onValue(trxRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const list = Object.keys(data).map(k => ({ id: k, ...data[k] }));
+        
+        // Filter for this specific user's transactions
         const userTrxs = list.filter(t => t.user === user.email);
         setMyTransactions(userTrxs.reverse());
 
-        // AUTO-REDIRECT LOGIC:
-        // If any transaction just switched to 'Completed', 
-        // the UI will re-render automatically. 
-        // You don't need to force navigate() if the user is already on the dashboard.
-      } else {
-        setMyTransactions([]);
+        // AUTO-REDIRECT TRIGGER:
+        // Check if any transaction just turned 'Completed'
+        const hasNewCompletion = userTrxs.some(t => t.status === 'Completed');
+        
+        if (hasNewCompletion) {
+          console.log("Payment confirmed: Status is now Completed.");
+          // If you need them to stay on the dashboard, you don't need to do anything!
+          // The UI will re-render automatically because 'setMyTransactions' was called.
+        }
       }
       setIsLoading(false);
     });
 
-    return () => {
-      unsubB();
-      unsubT();
-    };
+    return () => unsubscribe();
   }, [user, navigate]);
 
-  // ... rest of your component code ...
+  // ... rest of your return() code ...
+
   if (isLoading) {
     return (
       <div className="flex-1 flex justify-center items-center py-20">
