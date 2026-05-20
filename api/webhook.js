@@ -7,7 +7,7 @@ if (!admin.apps.length) {
     credential: admin.credential.cert({
       projectId: "cebu-fierce-fitness-gym",
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') : '',
+      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
     }),
     databaseURL: "https://cebu-fierce-fitness-gym-default-rtdb.asia-southeast1.firebasedatabase.app"
   });
@@ -29,7 +29,6 @@ export default async function handler(req, res) {
     const signatureHeader = req.headers['paymongo-signature'];
     const webhookSecret = process.env.PAYMONGO_WEBHOOK_SECRET;
 
-    // Verify Signature
     if (signatureHeader && webhookSecret) {
       const [tPart, tePart, liPart] = signatureHeader.split(',');
       const timestamp = tPart.split('=')[1];
@@ -41,29 +40,32 @@ export default async function handler(req, res) {
     }
 
     const event = JSON.parse(rawBody);
-
-    // Safe access to checkout_url
     if (event.data?.attributes?.type === 'payment.paid' || event.data?.attributes?.type === 'link.payment.paid') {
-      const paymentData = event.data.attributes.data?.attributes;
-      const checkoutUrl = paymentData?.redirect?.checkout_url;
+      const checkoutUrl = event.data.attributes.data?.attributes?.redirect?.checkout_url;
+      
+      console.log("Webhook received payment for:", checkoutUrl);
 
-      if (checkoutUrl) {
-        const db = admin.database();
-        const snapshot = await db.ref('transactions').once('value');
-        const transactions = snapshot.val();
+      const db = admin.database();
+      const snapshot = await db.ref('transactions').once('value');
+      const transactions = snapshot.val();
 
-        for (const key in transactions) {
-          if (transactions[key].checkoutUrl === checkoutUrl) {
-            await db.ref(`transactions/${key}`).update({ status: 'Completed' });
-            break;
-          }
+      let found = false;
+      for (const key in transactions) {
+        // Log what we are comparing
+        console.log(`Comparing DB URL [${transactions[key].checkoutUrl}] with PayMongo [${checkoutUrl}]`);
+        
+        if (transactions[key].checkoutUrl === checkoutUrl) {
+          await db.ref(`transactions/${key}`).update({ status: 'Completed' });
+          console.log(`SUCCESS: Updated transaction ${key} to Completed`);
+          found = true;
+          break;
         }
       }
+      if (!found) console.warn("WARNING: No matching checkoutUrl found in database.");
     }
     return res.status(200).json({ received: true });
-    
   } catch (err) {
     console.error("Webhook processing error:", err);
-    return res.status(200).json({ received: true, error: "Acknowledged." });
+    return res.status(200).json({ received: true, error: err.message });
   }
 }
