@@ -1,6 +1,7 @@
 import admin from 'firebase-admin';
 import crypto from 'crypto';
 
+// Initialize Firebase Admin SDK
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert({
@@ -27,7 +28,7 @@ export default async function handler(req, res) {
     const rawBody = await getRawBody(req);
     const event = JSON.parse(rawBody);
 
-    // 1. Verify Signature (Optional but recommended for production)
+    // 1. Verify Signature
     const signatureHeader = req.headers['paymongo-signature'];
     const webhookSecret = process.env.PAYMONGO_WEBHOOK_SECRET;
 
@@ -41,48 +42,36 @@ export default async function handler(req, res) {
       if (liveSignature !== expectedSignature) return res.status(400).json({ error: 'Invalid signature' });
     }
 
-    // 2. Extract checkout_url based on PayMongo Event structure
-    // Log the full event to Vercel logs to debug if it stays undefined
-    console.log("Full PayMongo Event received:", JSON.stringify(event));
+    // 2. Logic: Only process 'link.payment.paid' as it contains the checkout_url
+    if (event.data?.attributes?.type === 'link.payment.paid') {
+      const checkoutUrl = event.data.attributes.data?.attributes?.checkout_url;
 
-    // Try multiple paths common in PayMongo events
-    const attributes = event.data?.attributes;
-    const checkoutUrl = attributes?.data?.attributes?.redirect?.checkout_url || 
-                        attributes?.data?.attributes?.checkout_url;
+      if (!checkoutUrl) {
+        return res.status(200).json({ received: true, message: "No checkout_url found in event" });
+      }
 
-    if (!checkoutUrl) {
-      console.error("Critical: Could not extract checkout_url from event.");
-      return res.status(400).json({ error: "Missing checkout_url in event data" });
-    }
+      console.log("Processing payment for URL:", checkoutUrl);
 
-    console.log("Processing payment for URL:", checkoutUrl);
+      const db = admin.database();
+      const snapshot = await db.ref('transactions').once('value');
+      const transactions = snapshot.val();
 
-    // 3. Match and Update Database
-    const db = admin.database();
-    const snapshot = await db.ref('transactions').once('value');
-    const transactions = snapshot.val();
-
-    let updated = false;
-    if (transactions) {
-      for (const key in transactions) {
-        if (transactions[key].checkoutUrl === checkoutUrl) {
-          await db.ref(`transactions/${key}`).update({ status: 'Completed' });
-          console.log(`Success: Marked transaction ${key} as Completed.`);
-          updated = true;
-          break;
+      if (transactions) {
+        for (const key in transactions) {
+          if (transactions[key].checkoutUrl === checkoutUrl) {
+            await db.ref(`transactions/${key}`).update({ status: 'Completed' });
+            console.log(`SUCCESS: Updated transaction ${key} to Completed`);
+            break;
+          }
         }
       }
-    }
-
-    if (!updated) {
-      console.warn("Match failed: checkoutUrl found in event, but not in Firebase.");
-      return res.status(404).json({ error: "Transaction not found" });
-    }
+    } 
+    // Ignore 'payment.paid' or other event types to keep logs clean
 
     return res.status(200).json({ received: true });
     
   } catch (err) {
-    console.error("Webhook Error:", err);
-    return res.status(500).json({ error: err.message });
+    console.error("Webhook processing error:", err);
+    return res.status(200).json({ received: true, error: err.message });
   }
 }
