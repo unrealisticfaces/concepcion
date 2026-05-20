@@ -1,7 +1,6 @@
 import admin from 'firebase-admin';
 import crypto from 'crypto';
 
-// Initialize Firebase Admin SDK
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert({
@@ -28,7 +27,6 @@ export default async function handler(req, res) {
     const rawBody = await getRawBody(req);
     const event = JSON.parse(rawBody);
 
-    // 1. Verify Signature
     const signatureHeader = req.headers['paymongo-signature'];
     const webhookSecret = process.env.PAYMONGO_WEBHOOK_SECRET;
 
@@ -42,7 +40,6 @@ export default async function handler(req, res) {
       if (liveSignature !== expectedSignature) return res.status(400).json({ error: 'Invalid signature' });
     }
 
-    // 2. Logic: Only process 'link.payment.paid' as it contains the checkout_url
     if (event.data?.attributes?.type === 'link.payment.paid') {
       const checkoutUrl = event.data.attributes.data?.attributes?.checkout_url;
 
@@ -66,7 +63,6 @@ export default async function handler(req, res) {
         }
       }
     } 
-    // Ignore 'payment.paid' or other event types to keep logs clean
 
     return res.status(200).json({ received: true });
     
