@@ -759,32 +759,40 @@ const UserDashboard = ({ user }) => {
       return;
     }
 
-    const unsubscribeBookings = onValue(ref(db, 'bookings'), (snapshot) => {
+    // Wrap listeners in a way that always triggers setIsLoading(false)
+    const bookingsRef = ref(db, 'bookings');
+    const trxRef = ref(db, 'transactions');
+
+    const unsubB = onValue(bookingsRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const allBookings = Object.keys(data).map(k => ({ id: k, ...data[k] }));
-        setMyBookings(allBookings.filter(b => b.email === user.email).reverse());
+        const list = Object.keys(data).map(k => ({ id: k, ...data[k] }));
+        setMyBookings(list.filter(b => b.email === user.email).reverse());
+      } else {
+        setMyBookings([]);
       }
     });
 
-    const unsubscribeTrx = onValue(ref(db, 'transactions'), (snapshot) => {
+    const unsubT = onValue(trxRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const allTrx = Object.keys(data).map(k => ({ id: k, ...data[k] }));
-        setMyTransactions(allTrx.filter(t => t.user === user.email).reverse());
+        const list = Object.keys(data).map(k => ({ id: k, ...data[k] }));
+        setMyTransactions(list.filter(t => t.user === user.email).reverse());
+      } else {
+        setMyTransactions([]);
       }
-      setIsLoading(false);
+      setIsLoading(false); // ALWAYS set false, even if data is null
     });
 
     return () => {
-      unsubscribeBookings();
-      unsubscribeTrx();
+      unsubB();
+      unsubT();
     };
   }, [user, navigate]);
 
   if (isLoading) {
     return (
-      <div className="flex-1 flex justify-center items-center">
+      <div className="flex-1 flex justify-center items-center py-20">
         <div className="w-8 h-8 border-4 border-[#FFBF00]/30 border-t-[#FFBF00] rounded-full animate-spin"></div>
       </div>
     );
