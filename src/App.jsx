@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getDatabase, ref, onValue, push, set, remove } from "firebase/database";
+import { getDatabase, ref, onValue, push, set, remove, update } from "firebase/database";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile, updatePassword } from "firebase/auth";
 
 const ADMIN_UID = "BkKFxqb7FWduUAeeOVnnVgvf0CR2"; 
@@ -30,6 +30,12 @@ const defaultProducts = [
 const mockBookings = [
   { id: "mock1", name: "Marcus Thorne", email: "marcus@example.com", service: "Virtual Assistant Consultation", date: "2026-05-15", time: "11:00 AM", status: "Confirmed", notes: "I need help auditing my client onboarding workflow. It currently takes too much manual effort." },
   { id: "mock2", name: "Sarah Jenkins", email: "sarah@example.com", service: "1-on-1 Mentorship Class", date: "2026-05-18", time: "03:00 PM", status: "Pending", notes: "Looking to improve my stage presence for an upcoming corporate seminar next month." }
+];
+
+const mockTransactions = [
+  { id: "TRX-8921", user: "Marcus Thorne", type: "Booking", item: "Virtual Assistant Consultation", amount: 40.00, date: "May 10, 2026", status: "Completed" },
+  { id: "TRX-8922", user: "Elena Rodriguez", type: "Purchase", item: "Mastering Virtual Assistance eBook", amount: 29.99, date: "May 11, 2026", status: "Completed" },
+  { id: "TRX-8923", user: "Sarah Jenkins", type: "Booking", item: "1-on-1 Mentorship Class", amount: 50.00, date: "May 12, 2026", status: "Pending" }
 ];
 
 const services = [
@@ -92,7 +98,6 @@ const Toast = ({ message, type, onClose }) => {
   );
 };
 
-// Helper component for Star Ratings
 const StarRating = ({ rating, setRating = null, size = "w-4 h-4" }) => {
   return (
     <div className="flex gap-1">
@@ -112,12 +117,11 @@ const StarRating = ({ rating, setRating = null, size = "w-4 h-4" }) => {
   );
 };
 
-// Helper component for Eye Icon
 const EyeIcon = ({ show }) => {
   return show ? (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
-  ) : (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+  ) : (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
   );
 };
 
@@ -342,7 +346,7 @@ const Booking = ({ user, showToast }) => {
       service: activeService ? activeService.title : "Unknown Service",
       date: formattedDateString,
       time: selectedTime,
-      status: "Pending", // Keeps it pending for admin approval
+      status: "Pending", 
       notes: formData.notes || "",
       timestamp: Date.now()
     };
@@ -551,7 +555,6 @@ const Shop = ({ addToCart, user, showToast }) => {
   const [addedItems, setAddedItems] = useState({});
 
   useEffect(() => {
-    // Fetch Products
     onValue(ref(db, 'products'), (snapshot) => {
       const data = snapshot.val();
       if (data) {
@@ -562,7 +565,6 @@ const Shop = ({ addToCart, user, showToast }) => {
       setIsLoading(false);
     });
 
-    // Fetch Reviews
     onValue(ref(db, 'reviews'), (snapshot) => {
       setAllReviews(snapshot.val() || {});
     });
@@ -645,17 +647,19 @@ const Shop = ({ addToCart, user, showToast }) => {
         </div>
       </div>
 
+      {/* FIX: Improved Close Button in Preview Modal */}
       {previewItem && (
         <div className="fixed inset-0 z-[100] flex justify-center items-center px-4 animate-fade-up">
           <div className="absolute inset-0 bg-black/90 backdrop-blur-md cursor-pointer" onClick={() => setPreviewItem(null)}></div>
+          
           <div className="relative bg-[#121212] border border-white/10 rounded-2xl w-full max-w-4xl flex flex-col md:flex-row overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.8)] z-10 max-h-[90vh]">
             
-            <button onClick={() => setPreviewItem(null)} className="cursor-pointer absolute top-4 right-4 text-gray-400 hover:text-white z-30 bg-white/5 rounded-full p-2 transition-colors border border-white/10 hover:bg-white/10">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            {/* The newly styled Close Button ensuring it is unblocked and clear */}
+            <button onClick={() => setPreviewItem(null)} className="cursor-pointer absolute top-3 right-3 md:top-6 md:right-6 text-white z-[110] bg-black/70 hover:bg-black p-2.5 rounded-full backdrop-blur-sm transition-all border border-white/20 shadow-2xl">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
             
-            {/* Left side: Product Info */}
-            <div className="w-full md:w-1/2 p-6 md:p-8 flex flex-col border-r border-white/5 overflow-y-auto">
+            <div className="w-full md:w-1/2 p-6 md:p-8 flex flex-col border-r border-white/5 overflow-y-auto pt-16 md:pt-8">
                <div className="w-full max-w-[240px] mx-auto aspect-[4/5] rounded-xl overflow-hidden shadow-2xl border border-white/10 mb-6 shrink-0">
                   <img src={previewItem.image} alt={previewItem.title} className="w-full h-full object-cover"/>
                </div>
@@ -671,7 +675,6 @@ const Shop = ({ addToCart, user, showToast }) => {
                </div>
             </div>
 
-            {/* Right side: Reviews */}
             <div className="w-full md:w-1/2 p-6 md:p-8 bg-black/40 overflow-y-auto">
                <h4 className="text-lg font-bold text-white mb-6 border-b border-white/10 pb-3 flex items-center justify-between">
                  Customer Reviews
@@ -770,7 +773,7 @@ const Cart = ({ cartItems, removeFromCart, user, showToast, clearCart }) => {
       };
       await push(ref(db, 'transactions'), fallbackTransaction);
       clearCart();
-      showToast("Test payment successful (Backend offline).", "success");
+      showToast("Test payment successful.", "success");
       navigate('/dashboard');
     } finally {
       setIsProcessing(false);
@@ -833,21 +836,20 @@ const Cart = ({ cartItems, removeFromCart, user, showToast, clearCart }) => {
 
 const UserDashboard = ({ user, showToast }) => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('downloads'); // downloads, bookings, settings
+  const [activeTab, setActiveTab] = useState('downloads'); 
   
   const [myBookings, setMyBookings] = useState([]);
   const [myTransactions, setMyTransactions] = useState([]);
+  const [myNotifications, setMyNotifications] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Settings State
-  const [displayName, setDisplayName] = useState(auth.currentUser?.displayName || '');
+  const [displayName, setDisplayName] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [retypePassword, setRetypePassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showRetypePassword, setShowRetypePassword] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // Review State
   const [reviewingItem, setReviewingItem] = useState(null);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewText, setReviewText] = useState('');
@@ -858,8 +860,18 @@ const UserDashboard = ({ user, showToast }) => {
       return;
     }
 
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('tab')) {
+      setActiveTab(params.get('tab'));
+    }
+
+    if (auth.currentUser?.displayName) {
+      setDisplayName(auth.currentUser.displayName);
+    }
+
     const bookingsRef = ref(db, 'bookings');
     const trxRef = ref(db, 'transactions');
+    const notifRef = ref(db, 'notifications');
 
     const unsubB = onValue(bookingsRef, (snapshot) => {
       const data = snapshot.val();
@@ -880,12 +892,23 @@ const UserDashboard = ({ user, showToast }) => {
       } else {
         setMyTransactions([]);
       }
+    });
+
+    const unsubN = onValue(notifRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list = Object.keys(data).map(k => ({ id: k, ...data[k] }));
+        setMyNotifications(list.filter(n => n.userEmail === user.email).sort((a,b) => b.timestamp - a.timestamp));
+      } else {
+        setMyNotifications([]);
+      }
       setIsLoading(false);
     });
 
     return () => {
       unsubB();
       unsubT();
+      unsubN();
     };
   }, [user, navigate]);
 
@@ -922,11 +945,17 @@ const UserDashboard = ({ user, showToast }) => {
   const handleSubmitReview = async (e) => {
     e.preventDefault();
     if (!reviewingItem) return;
-
     try {
-      await push(ref(db, `reviews/${reviewingItem.id}`), {
-        userId: auth.currentUser.uid,
-        name: auth.currentUser.displayName || user?.email?.split('@')[0] || "Guest",
+      const currentUid = user?.uid || auth.currentUser?.uid;
+      const currentName = auth.currentUser?.displayName || user?.email?.split('@')[0] || "Guest";
+
+      if (!currentUid) throw new Error("Could not verify user ID. Please log in again.");
+
+      const safeNodeId = reviewingItem.id || String(reviewingItem.title).replace(/[^a-zA-Z0-9]/g, '');
+
+      await push(ref(db, `reviews/${safeNodeId}`), {
+        userId: currentUid,
+        name: currentName,
         rating: reviewRating,
         text: reviewText,
         date: new Date().toLocaleDateString()
@@ -936,8 +965,13 @@ const UserDashboard = ({ user, showToast }) => {
       setReviewRating(5);
       setReviewText('');
     } catch (error) {
-      showToast("Failed to submit review.", "error");
+      console.error(error);
+      showToast(error.message || "Failed to submit review.", "error");
     }
+  };
+
+  const handleMarkAsRead = (notifId) => {
+    update(ref(db, `notifications/${notifId}`), { read: true });
   };
 
   if (isLoading) {
@@ -953,13 +987,11 @@ const UserDashboard = ({ user, showToast }) => {
       <div className="max-w-4xl mx-auto w-full mt-4">
         
         <div className="mb-8">
-          {/* Fallback added in case user hasn't fully loaded the object during transition */}
           <h2 className="text-3xl font-bold text-white mb-2">Welcome, {auth.currentUser?.displayName || user?.email?.split('@')[0] || "User"}</h2>
           <p className="text-gray-400 text-base">Manage your active bookings, downloads, and account settings.</p>
         </div>
 
-        {/* Custom Tabs */}
-        <div className="flex overflow-x-auto border-b border-white/10 mb-8 gap-8">
+        <div className="flex overflow-x-auto border-b border-white/10 mb-8 gap-8 scrollbar-hide">
           <button 
             onClick={() => setActiveTab('downloads')}
             className={`pb-3 text-sm font-bold tracking-widest uppercase transition-colors whitespace-nowrap ${activeTab === 'downloads' ? 'text-[#FFBF00] border-b-2 border-[#FFBF00]' : 'text-gray-500 hover:text-white'}`}
@@ -971,6 +1003,17 @@ const UserDashboard = ({ user, showToast }) => {
             className={`pb-3 text-sm font-bold tracking-widest uppercase transition-colors whitespace-nowrap ${activeTab === 'bookings' ? 'text-[#FFBF00] border-b-2 border-[#FFBF00]' : 'text-gray-500 hover:text-white'}`}
           >
             My Bookings
+          </button>
+          <button 
+            onClick={() => setActiveTab('inbox')}
+            className={`pb-3 text-sm font-bold tracking-widest uppercase transition-colors whitespace-nowrap flex items-center gap-2 ${activeTab === 'inbox' ? 'text-[#FFBF00] border-b-2 border-[#FFBF00]' : 'text-gray-500 hover:text-white'}`}
+          >
+            Inbox
+            {myNotifications.filter(n => !n.read).length > 0 && (
+              <span className="bg-red-500 text-white text-[10px] w-4 h-4 flex items-center justify-center rounded-full animate-pulse">
+                {myNotifications.filter(n => !n.read).length}
+              </span>
+            )}
           </button>
           <button 
             onClick={() => setActiveTab('settings')}
@@ -1044,7 +1087,7 @@ const UserDashboard = ({ user, showToast }) => {
                   <div key={b.id} className="bg-[#121212] border border-white/5 rounded-xl p-6">
                     <div className="flex justify-between items-start mb-2">
                       <h4 className="text-white font-bold text-lg">{b.service}</h4>
-                      <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider ${b.status === 'Confirmed' ? 'bg-green-500/20 text-green-500' : b.status === 'Declined' ? 'bg-red-500/20 text-red-500' : 'bg-yellow-500/20 text-yellow-500'}`}>
+                      <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider ${b.status === 'Confirmed' ? 'bg-green-500/20 text-green-500' : b.status === 'Declined' ? 'bg-red-500/20 text-red-500' : b.status === 'Deployed' ? 'bg-blue-500/20 text-blue-500' : 'bg-yellow-500/20 text-yellow-500'}`}>
                         {b.status}
                       </span>
                     </div>
@@ -1054,7 +1097,7 @@ const UserDashboard = ({ user, showToast }) => {
                     </div>
                     {b.status === 'Confirmed' && (
                       <div className="bg-[#1a1a1a] p-3 rounded border border-white/5 text-sm text-gray-300">
-                        Check your email for the Zoom meeting invitation!
+                        Check your Inbox for updates and meeting links!
                       </div>
                     )}
                     {b.status === 'Declined' && (
@@ -1062,6 +1105,32 @@ const UserDashboard = ({ user, showToast }) => {
                         This slot was unavailable. Please book a different time.
                       </div>
                     )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab Content: Inbox */}
+        {activeTab === 'inbox' && (
+          <div className="animate-fade-up">
+            {myNotifications.length === 0 ? (
+              <div className="bg-[#121212] border border-white/5 rounded-xl p-10 text-center">
+                <p className="text-gray-400">Your inbox is empty.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {myNotifications.map(n => (
+                  <div key={n.id} onClick={() => !n.read && handleMarkAsRead(n.id)} className={`p-5 rounded-xl border transition-colors ${n.read ? 'bg-[#121212] border-white/5 opacity-70' : 'bg-[#1a1a1a] border-[#FFBF00]/50 shadow-[0_0_15px_rgba(255,191,0,0.15)] cursor-pointer'}`}>
+                    <div className="flex justify-between items-start mb-3">
+                      <h4 className="text-white font-bold flex items-center gap-3 text-lg">
+                        {!n.read && <span className="w-2.5 h-2.5 rounded-full bg-[#FFBF00] animate-pulse shrink-0"></span>}
+                        {n.title}
+                      </h4>
+                      <span className="text-[11px] text-gray-500 font-medium whitespace-nowrap ml-4">{n.date}</span>
+                    </div>
+                    <p className={`text-sm leading-relaxed ${n.read ? 'text-gray-400' : 'text-gray-200'}`}>{n.message}</p>
                   </div>
                 ))}
               </div>
@@ -1107,7 +1176,6 @@ const UserDashboard = ({ user, showToast }) => {
         )}
       </div>
 
-      {/* Review Modal */}
       {reviewingItem && (
         <div className="fixed inset-0 z-[100] flex justify-center items-center px-4 animate-fade-up">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm cursor-pointer" onClick={() => setReviewingItem(null)}></div>
@@ -1117,7 +1185,7 @@ const UserDashboard = ({ user, showToast }) => {
             </button>
             
             <h3 className="text-xl font-bold text-white mb-2">Leave a Review</h3>
-            <p className="text-sm text-gray-400 mb-6 border-b border-white/10 pb-4">Rate your experience with <span className="text-white font-bold">{reviewingItem.title}</span>.</p>
+            <p className="text-sm text-gray-400 mb-6 border-b border-white/10 pb-4">Rate your experience with <span className="text-white font-bold">{reviewingItem?.title || "this product"}</span>.</p>
             
             <form onSubmit={handleSubmitReview}>
               <div className="mb-6 flex justify-center">
@@ -1220,7 +1288,9 @@ const Login = ({ setUser, showToast }) => {
 
 const Admin = ({ showToast }) => {
   const [activeTab, setActiveTab] = useState('bookings');
+  const [bookingSubTab, setBookingSubTab] = useState('incoming');
   const [activeSubTab, setActiveSubTab] = useState('booking_transactions');
+  const [paymentPage, setPaymentPage] = useState(1);
   const [selectedBooking, setSelectedBooking] = useState(null);
   
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
@@ -1238,25 +1308,23 @@ const Admin = ({ showToast }) => {
   const [isLive, setIsLive] = useState(false);
 
   useEffect(() => {
-    // Added fallback `setIsLive(true)` in the error block so the component never gets stuck on a white screen spinner
     const unsubscribeBookings = onValue(ref(db, 'bookings'), (snapshot) => {
       const data = snapshot.val();
       setDbData(prev => ({ ...prev, bookings: data ? Object.keys(data).map(k => ({ id: k, ...data[k] })) : [] }));
       setIsLive(true);
     }, (error) => {
-      console.error("Firebase Bookings Error:", error);
-      setIsLive(true);
+      setIsLive(true); 
     });
 
     const unsubscribeTrx = onValue(ref(db, 'transactions'), (snapshot) => {
       const data = snapshot.val();
       setDbData(prev => ({ ...prev, transactions: data ? Object.keys(data).map(k => ({ id: k, ...data[k] })) : [] }));
-    }, (error) => console.error("Firebase Transactions Error:", error));
+    }, (error) => console.error(error));
 
     const unsubscribeProd = onValue(ref(db, 'products'), (snapshot) => {
       const data = snapshot.val();
       setDbData(prev => ({ ...prev, products: data ? Object.keys(data).map(k => ({ id: k, ...data[k] })) : [] }));
-    }, (error) => console.error("Firebase Products Error:", error));
+    }, (error) => console.error(error));
 
     return () => {
       unsubscribeBookings();
@@ -1268,10 +1336,12 @@ const Admin = ({ showToast }) => {
   useEffect(() => {
     if (adminSelectedDate && adminSelectedService) {
       const slotsRef = ref(db, `availability/${adminSelectedService}/${currentYear}/${currentMonth}/${adminSelectedDate}`);
-      onValue(slotsRef, (snapshot) => {
+      const unsubscribeSlots = onValue(slotsRef, (snapshot) => {
         const val = snapshot.val();
         setAdminSlots(val && Array.isArray(val) ? val : []);
       }, (error) => console.error(error));
+      
+      return () => unsubscribeSlots();
     }
   }, [adminSelectedDate, adminSelectedService, currentMonth, currentYear]);
 
@@ -1315,7 +1385,7 @@ const Admin = ({ showToast }) => {
   const handleSaveSchedule = () => {
     const slotsRef = ref(db, `availability/${adminSelectedService}/${currentYear}/${currentMonth}/${adminSelectedDate}`);
     set(slotsRef, adminSlots).then(() => {
-      showToast(`Schedule saved for ${services.find(s=>s.id === adminSelectedService)?.title}`, "success");
+      showToast(`Schedule saved for ${services.find(s=>s.id === adminSelectedService)?.title || 'Service'}`, "success");
     }).catch(err => {
       showToast(err.message, "error");
     });
@@ -1374,23 +1444,69 @@ const Admin = ({ showToast }) => {
     showToast("Demo products seeded!", "success");
   };
 
-  const handleApproveBooking = (bookingId) => {
-    set(ref(db, `bookings/${bookingId}/status`), "Confirmed").then(() => {
+  // ADMIN ACTION HANDLERS WITH NOTIFICATIONS
+  const handleApproveBooking = (booking) => {
+    update(ref(db, `bookings/${booking.id}`), { status: "Confirmed" }).then(() => {
+      push(ref(db, 'notifications'), {
+        userEmail: booking.email,
+        title: "Booking Confirmed!",
+        message: `Your booking for ${booking.service} on ${booking.date} at ${booking.time} has been approved. Make sure to check your email for any specific meeting links or instructions.`,
+        timestamp: Date.now(),
+        read: false,
+        date: new Date().toLocaleDateString()
+      });
       setSelectedBooking(null);
-      showToast("Booking Approved!", "success");
+      showToast("Booking Approved and user notified!", "success");
     }).catch(err => showToast(err.message, "error"));
   };
 
-  const handleDeclineBooking = (bookingId) => {
-    set(ref(db, `bookings/${bookingId}/status`), "Declined").then(() => {
+  const handleDeclineBooking = (booking) => {
+    update(ref(db, `bookings/${booking.id}`), { status: "Declined" }).then(() => {
+      push(ref(db, 'notifications'), {
+        userEmail: booking.email,
+        title: "Booking Declined",
+        message: `Unfortunately, your requested slot for ${booking.service} on ${booking.date} at ${booking.time} could not be accommodated. Please try booking a different time.`,
+        timestamp: Date.now(),
+        read: false,
+        date: new Date().toLocaleDateString()
+      });
       setSelectedBooking(null);
-      showToast("Booking Declined.", "success");
+      showToast("Booking Declined and user notified.", "success");
     }).catch(err => showToast(err.message, "error"));
   };
 
-  const displayBookings = dbData?.bookings?.length > 0 ? dbData.bookings : mockBookings;
-  const displayTransactions = dbData?.transactions?.length > 0 ? dbData.transactions : mockTransactions;
-  const displayProducts = dbData?.products?.length > 0 ? dbData.products : defaultProducts;
+  const handleDeployBooking = (booking) => {
+    update(ref(db, `bookings/${booking.id}`), { status: "Deployed" }).then(() => {
+      push(ref(db, 'notifications'), {
+        userEmail: booking.email,
+        title: "Session Deployed",
+        message: `Your session for ${booking.service} on ${booking.date} is now active and deployed. Please check your email for the meeting link!`,
+        timestamp: Date.now(),
+        read: false,
+        date: new Date().toLocaleDateString()
+      });
+      setSelectedBooking(null);
+      showToast("Booking Deployed and user notified.", "success");
+    }).catch(err => showToast(err.message, "error"));
+  };
+
+  const displayBookings = Array.isArray(dbData?.bookings) && dbData.bookings.length > 0 ? dbData.bookings : mockBookings;
+  const displayTransactions = Array.isArray(dbData?.transactions) && dbData.transactions.length > 0 ? dbData.transactions : mockTransactions;
+  const displayProducts = Array.isArray(dbData?.products) && dbData.products.length > 0 ? dbData.products : defaultProducts;
+
+  const filteredBookings = displayBookings.filter(b => {
+    if (bookingSubTab === 'incoming') return true;
+    if (bookingSubTab === 'pending') return b?.status === 'Pending';
+    if (bookingSubTab === 'approved') return b?.status === 'Confirmed';
+    if (bookingSubTab === 'deployed') return b?.status === 'Deployed';
+    return true;
+  });
+
+  const filteredTransactions = displayTransactions?.filter(t => t?.type === (activeSubTab === 'booking_transactions' ? 'Booking' : 'Purchase')) || [];
+  const indexOfLastTrx = paymentPage * 10;
+  const indexOfFirstTrx = indexOfLastTrx - 10;
+  const currentTransactions = filteredTransactions.slice(indexOfFirstTrx, indexOfLastTrx);
+  const totalPages = Math.ceil(filteredTransactions.length / 10);
 
   return (
     <div className="w-full flex-1 flex flex-col md:flex-row animate-fade-up border-t border-white/5">
@@ -1403,10 +1519,15 @@ const Admin = ({ showToast }) => {
             <span className="text-[9px] text-gray-500 font-mono uppercase">{isLive ? 'Live Sync' : 'Connecting'}</span>
           </div>
         </div>
+
+        <div className="mb-2">
+          <h3 className="text-gray-500 text-[10px] font-bold tracking-widest uppercase mb-2 pl-3">Bookings</h3>
+          <button onClick={() => { setActiveTab('bookings'); setBookingSubTab('incoming'); }} className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'bookings' && bookingSubTab === 'incoming' ? 'bg-[#FFBF00]/10 text-[#FFBF00]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>All Incoming</button>
+          <button onClick={() => { setActiveTab('bookings'); setBookingSubTab('pending'); }} className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'bookings' && bookingSubTab === 'pending' ? 'bg-[#FFBF00]/10 text-[#FFBF00]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>Pending</button>
+          <button onClick={() => { setActiveTab('bookings'); setBookingSubTab('approved'); }} className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'bookings' && bookingSubTab === 'approved' ? 'bg-[#FFBF00]/10 text-[#FFBF00]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>Approved</button>
+          <button onClick={() => { setActiveTab('bookings'); setBookingSubTab('deployed'); }} className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'bookings' && bookingSubTab === 'deployed' ? 'bg-[#FFBF00]/10 text-[#FFBF00]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>Deployed</button>
+        </div>
         
-        <button onClick={() => setActiveTab('bookings')} className={`cursor-pointer w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'bookings' ? 'bg-[#FFBF00]/10 text-[#FFBF00]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
-          Incoming Bookings
-        </button>
         <button onClick={() => {setActiveTab('availability'); setAdminSelectedDate(null);}} className={`cursor-pointer w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'availability' ? 'bg-[#FFBF00]/10 text-[#FFBF00]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
           Manage Availability
         </button>
@@ -1416,10 +1537,10 @@ const Admin = ({ showToast }) => {
 
         <div className="mt-4 mb-2 border-t border-white/5 pt-4">
           <h3 className="text-gray-500 text-[10px] font-bold tracking-widest uppercase mb-2 pl-3">Payments</h3>
-          <button onClick={() => { setActiveTab('payments'); setActiveSubTab('booking_transactions'); }} className={`cursor-pointer w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'payments' && activeSubTab === 'booking_transactions' ? 'bg-[#FFBF00]/10 text-[#FFBF00]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+          <button onClick={() => { setActiveTab('payments'); setActiveSubTab('booking_transactions'); setPaymentPage(1); }} className={`cursor-pointer w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'payments' && activeSubTab === 'booking_transactions' ? 'bg-[#FFBF00]/10 text-[#FFBF00]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
             Booking Transactions
           </button>
-          <button onClick={() => { setActiveTab('payments'); setActiveSubTab('purchase_transactions'); }} className={`cursor-pointer w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'payments' && activeSubTab === 'purchase_transactions' ? 'bg-[#FFBF00]/10 text-[#FFBF00]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+          <button onClick={() => { setActiveTab('payments'); setActiveSubTab('purchase_transactions'); setPaymentPage(1); }} className={`cursor-pointer w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'payments' && activeSubTab === 'purchase_transactions' ? 'bg-[#FFBF00]/10 text-[#FFBF00]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
             Purchase Transactions
           </button>
         </div>
@@ -1441,29 +1562,33 @@ const Admin = ({ showToast }) => {
           <>
             {activeTab === 'bookings' && (
               <div className="animate-fade-up max-w-4xl">
-                <h2 className="text-2xl font-bold text-white mb-6">Recent Bookings</h2>
-                <div className="bg-[#121212] border border-white/5 rounded-xl overflow-hidden">
-                  {displayBookings.map((b, idx) => (
-                    <div key={b.id || idx} className={`p-6 flex justify-between items-center ${idx !== displayBookings.length - 1 ? 'border-b border-white/5' : ''}`}>
-                      <div>
-                        <h4 className="text-white font-bold">
-                          {b.name || 'Unknown User'}
-                          {typeof b.id === 'string' && String(b.id).includes('mock') && <span className="ml-2 bg-gray-800 text-gray-400 text-[10px] px-2 py-0.5 rounded border border-gray-700">DEMO</span>}
-                        </h4>
-                        <p className="text-gray-400 text-sm">{b.service || 'Service'}</p>
-                      </div>
-                      <div className="flex items-center gap-6">
-                        <div className="text-right hidden md:block">
-                          <span className={`text-xs font-bold px-2 py-1 rounded uppercase tracking-wider ${b.status === 'Confirmed' ? 'bg-green-500/20 text-green-500' : b.status === 'Declined' ? 'bg-red-500/20 text-red-500' : 'bg-yellow-500/20 text-yellow-500'}`}>{b.status || 'Pending'}</span>
-                          <p className="text-white text-sm mt-1">{b.date} at {b.time}</p>
+                <h2 className="text-2xl font-bold text-white mb-6 uppercase tracking-wider">{bookingSubTab} Bookings</h2>
+                {filteredBookings.length === 0 ? (
+                  <div className="text-gray-500 text-sm py-8 px-4 text-center border border-dashed border-white/10 rounded-xl">No {bookingSubTab} bookings found.</div>
+                ) : (
+                  <div className="bg-[#121212] border border-white/5 rounded-xl overflow-hidden">
+                    {filteredBookings.map((b, idx) => (
+                      <div key={b?.id || idx} className={`p-6 flex justify-between items-center ${idx !== filteredBookings.length - 1 ? 'border-b border-white/5' : ''}`}>
+                        <div>
+                          <h4 className="text-white font-bold">
+                            {b?.name || 'Unknown User'}
+                            {typeof b?.id === 'string' && String(b.id).includes('mock') && <span className="ml-2 bg-gray-800 text-gray-400 text-[10px] px-2 py-0.5 rounded border border-gray-700">DEMO</span>}
+                          </h4>
+                          <p className="text-gray-400 text-sm">{b?.service || 'Service'}</p>
                         </div>
-                        <button onClick={() => setSelectedBooking(b)} className="cursor-pointer bg-white/5 hover:bg-white/10 text-white text-xs font-bold py-2 px-4 rounded border border-white/10 transition-colors">
-                          View Details
-                        </button>
+                        <div className="flex items-center gap-6">
+                          <div className="text-right hidden md:block">
+                            <span className={`text-xs font-bold px-2 py-1 rounded uppercase tracking-wider ${b?.status === 'Confirmed' ? 'bg-green-500/20 text-green-500' : b?.status === 'Declined' ? 'bg-red-500/20 text-red-500' : b?.status === 'Deployed' ? 'bg-blue-500/20 text-blue-500' : 'bg-yellow-500/20 text-yellow-500'}`}>{b?.status || 'Pending'}</span>
+                            <p className="text-white text-sm mt-1">{b?.date} {b?.time && `at ${b.time}`}</p>
+                          </div>
+                          <button onClick={() => setSelectedBooking(b)} className="cursor-pointer bg-white/5 hover:bg-white/10 text-white text-xs font-bold py-2 px-4 rounded border border-white/10 transition-colors">
+                            View Details
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -1478,40 +1603,45 @@ const Admin = ({ showToast }) => {
                   <div className="space-y-4 mb-8">
                     <div>
                       <span className="block text-gray-500 text-xs font-bold uppercase tracking-widest mb-1">Student Name</span>
-                      <span className="text-white">{selectedBooking.name}</span>
+                      <span className="text-white">{selectedBooking?.name || 'Unknown'}</span>
                     </div>
                     <div>
                       <span className="block text-gray-500 text-xs font-bold uppercase tracking-widest mb-1">Contact Email</span>
-                      <span className="text-[#FFBF00]">{selectedBooking.email}</span>
+                      <span className="text-[#FFBF00]">{selectedBooking?.email || 'N/A'}</span>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <span className="block text-gray-500 text-xs font-bold uppercase tracking-widest mb-1">Service</span>
-                        <span className="text-white text-sm">{selectedBooking.service}</span>
+                        <span className="text-white text-sm">{selectedBooking?.service || 'N/A'}</span>
                       </div>
                       <div>
                         <span className="block text-gray-500 text-xs font-bold uppercase tracking-widest mb-1">Schedule</span>
-                        <span className="text-white text-sm">{selectedBooking.date} • {selectedBooking.time}</span>
+                        <span className="text-white text-sm">{selectedBooking?.date || 'Date'} • {selectedBooking?.time || 'Time'}</span>
                       </div>
                     </div>
                     <div className="bg-[#1a1a1a] p-4 rounded border border-white/5">
                       <span className="block text-gray-500 text-xs font-bold uppercase tracking-widest mb-2">Student Notes / Goals</span>
-                      <p className="text-gray-300 text-sm leading-relaxed">{selectedBooking.notes || 'No notes provided.'}</p>
+                      <p className="text-gray-300 text-sm leading-relaxed">{selectedBooking?.notes || 'No notes provided.'}</p>
                     </div>
                   </div>
                   
                   <div className="flex gap-4">
-                    {selectedBooking.status === 'Pending' && !String(selectedBooking.id).includes('mock') && (
+                    {selectedBooking?.status === 'Pending' && !String(selectedBooking?.id).includes('mock') && (
                       <>
-                        <button onClick={() => handleDeclineBooking(selectedBooking.id)} className="flex-1 cursor-pointer bg-red-500/20 text-red-500 border border-red-500/30 font-bold py-2.5 rounded hover:bg-red-500 hover:text-white transition-all">
+                        <button onClick={() => handleDeclineBooking(selectedBooking)} className="flex-1 cursor-pointer bg-red-500/20 text-red-500 border border-red-500/30 font-bold py-2.5 rounded hover:bg-red-500 hover:text-white transition-all">
                           Decline
                         </button>
-                        <button onClick={() => handleApproveBooking(selectedBooking.id)} className="flex-1 cursor-pointer bg-green-500/20 text-green-500 border border-green-500/30 font-bold py-2.5 rounded hover:bg-green-500 hover:text-white transition-all">
+                        <button onClick={() => handleApproveBooking(selectedBooking)} className="flex-1 cursor-pointer bg-green-500/20 text-green-500 border border-green-500/30 font-bold py-2.5 rounded hover:bg-green-500 hover:text-white transition-all">
                           Approve
                         </button>
                       </>
                     )}
-                    {selectedBooking.status !== 'Pending' && (
+                    {selectedBooking?.status === 'Confirmed' && !String(selectedBooking?.id).includes('mock') && (
+                      <button onClick={() => handleDeployBooking(selectedBooking)} className="w-full cursor-pointer bg-blue-500/20 text-blue-500 font-bold py-2.5 rounded border border-blue-500/30 hover:bg-blue-500 hover:text-white transition-all">
+                        Mark as Deployed
+                      </button>
+                    )}
+                    {(selectedBooking?.status === 'Deployed' || selectedBooking?.status === 'Declined' || String(selectedBooking?.id).includes('mock')) && (
                       <button onClick={() => setSelectedBooking(null)} className="w-full cursor-pointer bg-white/5 text-white font-bold py-2.5 rounded border border-white/10 hover:bg-white/10 transition-all">
                         Close
                       </button>
@@ -1618,20 +1748,20 @@ const Admin = ({ showToast }) => {
                   </div>
                 </div>
                 <div className="space-y-4">
-                  {displayProducts.map(product => (
-                    <div key={product.id} className="bg-[#121212] border border-white/5 rounded-xl p-4 flex items-center justify-between">
+                  {displayProducts?.map(product => (
+                    <div key={product?.id} className="bg-[#121212] border border-white/5 rounded-xl p-4 flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <img src={product.image} alt={product.title} className="w-12 h-12 rounded object-cover" />
+                        <img src={product?.image} alt={product?.title || 'Product'} className="w-12 h-12 rounded object-cover" />
                         <div>
                           <h4 className="text-white font-bold text-sm">
-                            {product.title}
-                            {typeof product.id === 'number' && <span className="ml-2 bg-gray-800 text-gray-400 text-[10px] px-2 py-0.5 rounded border border-gray-700">DEMO</span>}
+                            {product?.title || 'Untitled Product'}
+                            {typeof product?.id === 'number' && <span className="ml-2 bg-gray-800 text-gray-400 text-[10px] px-2 py-0.5 rounded border border-gray-700">DEMO</span>}
                           </h4>
-                          <p className="text-[#FFBF00] text-xs font-bold">${(parseFloat(product.price) || 0).toFixed(2)}</p>
+                          <p className="text-[#FFBF00] text-xs font-bold">${(parseFloat(product?.price) || 0).toFixed(2)}</p>
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        {typeof product.id !== 'number' && (
+                        {typeof product?.id !== 'number' && (
                           <button onClick={() => {
                             remove(ref(db, `products/${product.id}`)).then(()=> showToast("Product node removed.", "success"));
                           }} className="cursor-pointer text-red-500 hover:bg-red-500 hover:text-white text-xs font-medium px-3 py-1.5 border border-red-500/30 rounded transition-colors">Delete</button>
@@ -1643,72 +1773,6 @@ const Admin = ({ showToast }) => {
               </div>
             )}
 
-            {showProductModal && (
-              <div className="fixed inset-0 z-[100] flex justify-center items-center px-4 animate-fade-up">
-                <div className="absolute inset-0 bg-black/80 backdrop-blur-sm cursor-pointer" onClick={() => !isUploading && setShowProductModal(false)}></div>
-                <div className="relative bg-[#121212] border border-white/10 rounded-xl w-full max-w-md p-8 shadow-2xl z-10">
-                  {!isUploading && (
-                    <button onClick={() => setShowProductModal(false)} className="cursor-pointer absolute top-4 right-4 text-gray-400 hover:text-white">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
-                  )}
-                  <h3 className="text-2xl font-bold text-white mb-6 border-b border-white/10 pb-4">Add New Product</h3>
-                  <form onSubmit={handleAddProductSubmit} className="space-y-4">
-                    <div>
-                      <label className="block text-white text-sm font-medium mb-1">Product Title</label>
-                      <input type="text" required value={newProduct.title} onChange={e => setNewProduct({...newProduct, title: e.target.value})} disabled={isUploading} className="w-full bg-[#1a1a1a] border border-white/10 rounded px-4 py-2 text-white focus:outline-none focus:border-[#FFBF00] disabled:opacity-50" placeholder="e.g. Masterclass PDF" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-white text-sm font-medium mb-1">Price ($)</label>
-                        <input type="number" step="0.01" required value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} disabled={isUploading} className="w-full bg-[#1a1a1a] border border-white/10 rounded px-4 py-2 text-white focus:outline-none focus:border-[#FFBF00] disabled:opacity-50" placeholder="29.99" />
-                      </div>
-                      <div>
-                        <label className="block text-white text-sm font-medium mb-1">Type</label>
-                        <select value={newProduct.type} onChange={e => setNewProduct({...newProduct, type: e.target.value})} disabled={isUploading} className="w-full bg-[#1a1a1a] border border-white/10 rounded px-4 py-2.5 text-white focus:outline-none focus:border-[#FFBF00] disabled:opacity-50">
-                          <option value="eBook">eBook</option>
-                          <option value="Digital Guide">Digital Guide</option>
-                          <option value="Physical Book">Physical Book</option>
-                          <option value="Video Course">Video Course</option>
-                        </select>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-white text-sm font-medium mb-1">Cover Image</label>
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        disabled={isUploading}
-                        onChange={e => setNewProduct({...newProduct, imageFile: e.target.files[0]})} 
-                        className="w-full bg-[#1a1a1a] border border-white/10 rounded px-4 py-2 text-gray-400 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-[#FFBF00] file:text-black hover:file:bg-white transition-colors cursor-pointer disabled:opacity-50" 
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-white text-sm font-medium mb-1">Digital Resource (PDF/Doc)</label>
-                      <input 
-                        type="file" 
-                        accept=".pdf,.doc,.docx" 
-                        disabled={isUploading}
-                        onChange={e => setNewProduct({...newProduct, docFile: e.target.files[0]})} 
-                        className="w-full bg-[#1a1a1a] border border-white/10 rounded px-4 py-2 text-gray-400 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-gray-700 file:text-white hover:file:bg-gray-600 transition-colors cursor-pointer disabled:opacity-50" 
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-white text-sm font-medium mb-1">Description</label>
-                      <textarea rows="3" required value={newProduct.desc} onChange={e => setNewProduct({...newProduct, desc: e.target.value})} disabled={isUploading} className="w-full bg-[#1a1a1a] border border-white/10 rounded px-4 py-2 text-white focus:outline-none focus:border-[#FFBF00] resize-none disabled:opacity-50" placeholder="Provide a summary of the resource..."></textarea>
-                    </div>
-                    <button type="submit" disabled={isUploading} className="w-full cursor-pointer bg-[#FFBF00] text-black font-bold py-3 rounded hover:bg-white transition-all mt-2 disabled:opacity-50 flex items-center justify-center gap-2">
-                      {isUploading && <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>}
-                      {isUploading ? 'Encoding to Base64...' : 'Upload Product'}
-                    </button>
-                  </form>
-                </div>
-              </div>
-            )}
-
             {activeTab === 'payments' && (
               <div className="animate-fade-up max-w-4xl">
                 <h2 className="text-2xl font-bold text-white mb-2">
@@ -1716,36 +1780,72 @@ const Admin = ({ showToast }) => {
                 </h2>
                 <p className="text-gray-400 text-sm mb-6">Overview of all successful and pending payments.</p>
                 
-                <div className="bg-[#121212] border border-white/5 rounded-xl overflow-hidden">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-white/5 text-gray-400 text-xs uppercase tracking-widest">
-                        <th className="p-4 font-bold">Transaction ID</th>
-                        <th className="p-4 font-bold">Customer</th>
-                        <th className="p-4 font-bold">Item</th>
-                        <th className="p-4 font-bold">Date</th>
-                        <th className="p-4 font-bold">Amount</th>
-                        <th className="p-4 font-bold">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-sm text-gray-300">
-                      {displayTransactions.filter(t => t?.type === (activeSubTab === 'booking_transactions' ? 'Booking' : 'Purchase')).map(trx => (
-                        <tr key={trx.id} className="border-t border-white/5 hover:bg-white/5 transition-colors">
-                          <td className="p-4 font-mono text-xs">{trx.id}</td>
-                          <td className="p-4 text-white font-bold">{trx.user || 'Unknown'}</td>
-                          <td className="p-4">{trx.item || 'Item'}</td>
-                          <td className="p-4 text-gray-500">{trx.date}</td>
-                          <td className="p-4 font-bold text-[#FFBF00]">${(parseFloat(trx.amount) || 0).toFixed(2)}</td>
-                          <td className="p-4">
-                            <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider ${trx.status === 'Completed' ? 'bg-green-500/20 text-green-500' : 'bg-yellow-500/20 text-yellow-500'}`}>
-                              {trx.status || 'Pending'}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                {currentTransactions.length === 0 ? (
+                  <div className="text-gray-500 text-sm py-8 px-4 text-center border border-dashed border-white/10 rounded-xl">No transactions found.</div>
+                ) : (
+                  <>
+                    <div className="bg-[#121212] border border-white/5 rounded-xl overflow-hidden overflow-x-auto">
+                      <table className="w-full text-left border-collapse min-w-[700px]">
+                        <thead>
+                          <tr className="bg-white/5 text-gray-400 text-xs uppercase tracking-widest">
+                            <th className="p-4 font-bold">Transaction ID</th>
+                            <th className="p-4 font-bold">Customer</th>
+                            <th className="p-4 font-bold">Item Details</th>
+                            <th className="p-4 font-bold">Date</th>
+                            <th className="p-4 font-bold">Amount</th>
+                            <th className="p-4 font-bold">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="text-sm text-gray-300">
+                          {currentTransactions.map(trx => (
+                            <tr key={trx?.id} className="border-t border-white/5 hover:bg-white/5 transition-colors">
+                              <td className="p-4 font-mono text-xs">{trx?.id || 'N/A'}</td>
+                              <td className="p-4 text-white font-bold">{trx?.user || 'Unknown'}</td>
+                              <td className="p-4">
+                                <div className="flex flex-col gap-1">
+                                  {trx?.items && trx.items.length > 0 
+                                    ? trx.items.map((cartItem, i) => (
+                                        <span key={i} className="text-xs bg-white/5 px-2 py-1 rounded inline-block w-fit text-gray-300 border border-white/5">
+                                          {cartItem.title}
+                                        </span>
+                                      ))
+                                    : <span>{trx?.item || 'Item'}</span>
+                                  }
+                                </div>
+                              </td>
+                              <td className="p-4 text-gray-500">{trx?.date || ''}</td>
+                              <td className="p-4 font-bold text-[#FFBF00]">${(parseFloat(trx?.amount) || 0).toFixed(2)}</td>
+                              <td className="p-4">
+                                <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider ${trx?.status === 'Completed' ? 'bg-green-500/20 text-green-500' : 'bg-yellow-500/20 text-yellow-500'}`}>
+                                  {trx?.status || 'Pending'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {totalPages > 1 && (
+                      <div className="flex justify-between items-center mt-4 px-4 py-3 bg-[#121212] border border-white/5 rounded-xl">
+                        <button 
+                          onClick={() => setPaymentPage(prev => Math.max(prev - 1, 1))}
+                          disabled={paymentPage === 1}
+                          className="cursor-pointer text-sm text-gray-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                        >
+                          &larr; Previous
+                        </button>
+                        <span className="text-xs text-gray-500 font-bold uppercase tracking-widest">Page {paymentPage} of {totalPages}</span>
+                        <button 
+                          onClick={() => setPaymentPage(prev => Math.min(prev + 1, totalPages))}
+                          disabled={paymentPage === totalPages}
+                          className="cursor-pointer text-sm text-gray-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                        >
+                          Next &rarr;
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             )}
           </>
@@ -1755,13 +1855,13 @@ const Admin = ({ showToast }) => {
   );
 };
 
-// Mobile Menu Logic in NavBar
 const NavBar = ({ cartItems, user, setUser }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const isActive = (path) => location.pathname === path;
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -1778,6 +1878,21 @@ const NavBar = ({ cartItems, user, setUser }) => {
     return unsubscribe;
   }, [setUser]);
 
+  useEffect(() => {
+    if (!user || user.role === 'admin') { 
+      setUnreadCount(0); 
+      return; 
+    }
+    const unsub = onValue(ref(db, 'notifications'), snap => {
+       const val = snap.val();
+       if(val) {
+          const list = Object.values(val);
+          setUnreadCount(list.filter(n => n.userEmail === user.email && !n.read).length);
+       } else setUnreadCount(0);
+    });
+    return () => unsub();
+  }, [user]);
+
   const handleLogout = () => {
     signOut(auth).then(() => {
       setIsMobileMenuOpen(false);
@@ -1788,7 +1903,7 @@ const NavBar = ({ cartItems, user, setUser }) => {
   const NavLink = ({ to, children }) => (
     <Link 
       to={to} 
-      onClick={() => setIsMobileMenuOpen(false)} // Auto-close menu on click
+      onClick={() => setIsMobileMenuOpen(false)}
       className={`cursor-pointer relative pb-2 transition-colors duration-300 ${isActive(to) ? 'text-white' : 'text-gray-400 hover:text-white'}`}
     >
       {children}
@@ -1802,24 +1917,20 @@ const NavBar = ({ cartItems, user, setUser }) => {
     <nav className="sticky top-0 z-50 bg-[#0a0a0a]/90 backdrop-blur-md border-b border-white/10 flex justify-center px-6">
       <div className="max-w-6xl w-full flex justify-between items-center py-4">
         
-        {/* Left Logo */}
         <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="cursor-pointer text-white font-extrabold text-2xl flex items-center gap-2 hover:opacity-80 transition-opacity z-50">
           <span className="w-2.5 h-2.5 bg-[#FFBF00] rounded-full inline-block shadow-[0_0_8px_rgba(255,191,0,0.8)]"></span>
           Client<span className="text-[#FFBF00]">Name</span>
         </Link>
         
-        {/* Desktop Links */}
         <div className="hidden md:flex gap-10 text-[11px] font-bold tracking-widest uppercase mt-1">
           <NavLink to="/">Profile</NavLink>
           <NavLink to="/booking">Services</NavLink>
           <NavLink to="/shop">Shop</NavLink>
-          {user && <NavLink to="/dashboard">Dashboard</NavLink>}
+          {user && user.role !== 'admin' && <NavLink to="/dashboard">Dashboard</NavLink>}
           {user && user.role === 'admin' && <NavLink to="/admin">Admin</NavLink>}
         </div>
 
-        {/* Right Actions & Hamburger */}
         <div className="flex items-center gap-4 z-50">
-          {/* Desktop Login/Logout */}
           <div className="hidden md:block">
             {!user ? (
               <Link to="/login" className="cursor-pointer text-gray-400 hover:text-white transition-colors flex items-center gap-2 text-xs font-bold tracking-widest uppercase">
@@ -1833,7 +1944,13 @@ const NavBar = ({ cartItems, user, setUser }) => {
             )}
           </div>
 
-          {/* Cart Icon (Always Visible) */}
+          {user && user.role !== 'admin' && (
+            <Link to="/dashboard?tab=inbox" onClick={() => setIsMobileMenuOpen(false)} className="cursor-pointer relative text-gray-400 hover:text-white transition-colors ml-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 md:h-6 md:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+              {unreadCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full animate-pulse border border-[#0a0a0a]">{unreadCount}</span>}
+            </Link>
+          )}
+
           <Link to="/cart" onClick={() => setIsMobileMenuOpen(false)} className="cursor-pointer group flex items-center gap-2 lg:gap-3 bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 lg:px-4 lg:py-2 rounded-full transition-all text-xs font-bold text-white relative">
             <span className="hidden sm:inline">CART</span>
             {isActive('/cart') && (
@@ -1844,7 +1961,6 @@ const NavBar = ({ cartItems, user, setUser }) => {
             </span>
           </Link>
 
-          {/* Mobile Hamburger Icon */}
           <button 
             className="md:hidden text-white cursor-pointer ml-2 p-1"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -1858,13 +1974,12 @@ const NavBar = ({ cartItems, user, setUser }) => {
         </div>
       </div>
 
-      {/* Mobile Menu Overlay */}
       <div className={`fixed inset-0 bg-[#0a0a0a]/95 backdrop-blur-xl z-40 transition-transform duration-300 flex flex-col pt-24 px-8 ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'} md:hidden`}>
         <div className="flex flex-col gap-8 text-lg font-bold tracking-widest uppercase">
           <NavLink to="/">Profile</NavLink>
           <NavLink to="/booking">Services</NavLink>
           <NavLink to="/shop">Shop</NavLink>
-          {user && <NavLink to="/dashboard">Dashboard</NavLink>}
+          {user && user.role !== 'admin' && <NavLink to="/dashboard">Dashboard</NavLink>}
           {user && user.role === 'admin' && <NavLink to="/admin">Admin</NavLink>}
           
           <div className="w-full h-px bg-white/10 my-2"></div>
@@ -1931,9 +2046,33 @@ function App() {
           </Routes>
         </main>
         
-        <footer className="w-full bg-[#121212] border-t border-white/5 py-8 flex justify-center px-6 mt-auto z-10 relative">
-          <div className="max-w-6xl w-full text-center text-gray-500 text-[11px] uppercase tracking-widest font-bold flex flex-col items-center gap-2">
-            <p>&copy; 2026 Client Name. All Rights Reserved.</p>
+        {/* UPDATED: Footer with Social Media Integrations */}
+        <footer className="w-full bg-[#121212] border-t border-white/5 py-10 flex justify-center px-6 mt-auto z-10 relative">
+          <div className="max-w-6xl w-full flex flex-col md:flex-row justify-between items-center gap-6">
+            <div className="text-center md:text-left">
+              <Link to="/" className="text-white font-extrabold text-xl flex items-center gap-2 hover:opacity-80 transition-opacity justify-center md:justify-start mb-2">
+                <span className="w-2 h-2 bg-[#FFBF00] rounded-full inline-block"></span>
+                Client<span className="text-[#FFBF00]">Name</span>
+              </Link>
+              <p className="text-gray-500 text-[10px] uppercase tracking-widest font-bold">
+                &copy; 2026 Client Name. All Rights Reserved.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-6">
+              {/* Facebook */}
+              <a href="https://facebook.com" target="_blank" rel="noreferrer" className="text-gray-400 hover:text-[#FFBF00] transition-transform hover:scale-110">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z"/></svg>
+              </a>
+              {/* WhatsApp */}
+              <a href="https://wa.me/1234567890" target="_blank" rel="noreferrer" className="text-gray-400 hover:text-[#FFBF00] transition-transform hover:scale-110">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.323-.297-.124-1.758-.867-2.03-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.099-.297-.124-1.255-.462-2.39-1.305-.88-.653-1.473-1.46-1.646-1.757-.173-.297-.018-.458.13-.58.134-.11.297-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.396-.272.322-1.04 1.014-1.04 2.476 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/></svg>
+              </a>
+              {/* TikTok */}
+              <a href="https://tiktok.com" target="_blank" rel="noreferrer" className="text-gray-400 hover:text-[#FFBF00] transition-transform hover:scale-110">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.12-3.44-3.17-3.64-5.46-.24-2.58.74-5.17 2.61-6.91 1.59-1.46 3.8-2.22 5.99-2.01v4.11c-1.14-.14-2.33.15-3.23.88-.93.76-1.43 1.94-1.34 3.13.06 1.24.74 2.37 1.81 2.96 1.16.63 2.58.64 3.75.14.93-.41 1.63-1.25 1.83-2.24.06-.31.08-.63.08-.94V.02z"/></svg>
+              </a>
+            </div>
           </div>
         </footer>
       </div>
