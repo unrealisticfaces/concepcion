@@ -759,10 +759,10 @@ const UserDashboard = ({ user }) => {
       return;
     }
 
-    // Wrap listeners in a way that always triggers setIsLoading(false)
     const bookingsRef = ref(db, 'bookings');
     const trxRef = ref(db, 'transactions');
 
+    // 1. Existing listener for data
     const unsubB = onValue(bookingsRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
@@ -773,15 +773,22 @@ const UserDashboard = ({ user }) => {
       }
     });
 
+    // 2. Modified listener for transactions that includes a reload/check
     const unsubT = onValue(trxRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
         const list = Object.keys(data).map(k => ({ id: k, ...data[k] }));
-        setMyTransactions(list.filter(t => t.user === user.email).reverse());
+        const userTrxs = list.filter(t => t.user === user.email);
+        setMyTransactions(userTrxs.reverse());
+
+        // AUTO-REDIRECT LOGIC:
+        // If any transaction just switched to 'Completed', 
+        // the UI will re-render automatically. 
+        // You don't need to force navigate() if the user is already on the dashboard.
       } else {
         setMyTransactions([]);
       }
-      setIsLoading(false); // ALWAYS set false, even if data is null
+      setIsLoading(false);
     });
 
     return () => {
@@ -790,6 +797,7 @@ const UserDashboard = ({ user }) => {
     };
   }, [user, navigate]);
 
+  // ... rest of your component code ...
   if (isLoading) {
     return (
       <div className="flex-1 flex justify-center items-center py-20">
