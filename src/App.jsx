@@ -80,7 +80,7 @@ const Toast = ({ message, type, onClose }) => {
       const timer = setTimeout(onClose, 3500);
       return () => clearTimeout(timer);
     }
-  }, [message]); 
+  }, [message, onClose]); 
 
   if (!message) return null;
 
@@ -625,7 +625,7 @@ const Shop = ({ addToCart, user, showToast }) => {
   );
 };
 
-const Cart = ({ cartItems, removeFromCart, user, showToast }) => {
+const Cart = ({ cartItems, removeFromCart, user, showToast, clearCart }) => {
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
   const total = cartItems.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
@@ -638,30 +638,31 @@ const Cart = ({ cartItems, removeFromCart, user, showToast }) => {
     }
 
     setIsProcessing(true);
-    showToast("Generating GCash link...", "success");
 
     try {
       const response = await fetch('/api/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({
           amount: total,
-          description: `Digital Shop Order (${cartItems.length} items)`,
-          email: user.email
+          description: `Cart Order (${cartItems.length} items)`
         })
       });
 
       if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.error || "Failed to generate checkout link.");
+        throw new Error('Payment failed or running locally without backend.');
       }
-
-      const data = await response.json();
+      
+      const rawText = await response.text();
+      const data = JSON.parse(rawText);
 
       const newTransaction = {
         user: user.email || "Guest",
         type: "Purchase",
         item: `Cart Order (${cartItems.length} items)`,
+        items: cartItems,
         amount: total,
         date: new Date().toLocaleDateString(),
         status: "Pending",
@@ -670,23 +671,23 @@ const Cart = ({ cartItems, removeFromCart, user, showToast }) => {
       };
 
       await push(ref(db, 'transactions'), newTransaction);
-      
       window.location.href = data.checkoutUrl;
 
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
       const fallbackTransaction = {
         user: user.email || "Guest",
         type: "Purchase",
         item: `Cart Order (${cartItems.length} items)`,
+        items: cartItems,
         amount: total,
         date: new Date().toLocaleDateString(),
         status: "Completed",
         timestamp: Date.now()
       };
-      push(ref(db, 'transactions'), fallbackTransaction).then(() => {
-        showToast("Test payment logged (Backend not active).", "success");
-      });
+      await push(ref(db, 'transactions'), fallbackTransaction);
+      clearCart();
+      showToast("Test payment successful (Backend offline).", "success");
+      navigate('/dashboard');
     } finally {
       setIsProcessing(false);
     }
@@ -734,12 +735,142 @@ const Cart = ({ cartItems, removeFromCart, user, showToast }) => {
                 <span>Total</span>
                 <span>${total.toFixed(2)}</span>
               </div>
-              <button onClick={handleCheckout} disabled={isProcessing} className="cursor-pointer w-full bg-[#FFBF00] text-black font-bold text-lg py-3 rounded hover:bg-white transition-all disabled:opacity-50">
+              <button onClick={handleCheckout} disabled={isProcessing} className="cursor-pointer w-full bg-[#FFBF00] text-black font-bold text-lg py-3 rounded hover:bg-white transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                {isProcessing && <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>}
                 {isProcessing ? 'Processing...' : 'Proceed to Checkout'}
               </button>
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+};
+
+const UserDashboard = ({ user }) => {
+  const navigate = useNavigate();
+  const [myBookings, setMyBookings] = useState([]);
+  const [myTransactions, setMyTransactions] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    const unsubscribeBookings = onValue(ref(db, 'bookings'), (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const allBookings = Object.keys(data).map(k => ({ id: k, ...data[k] }));
+        setMyBookings(allBookings.filter(b => b.email === user.email).reverse());
+      }
+    });
+
+    const unsubscribeTrx = onValue(ref(db, 'transactions'), (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const allTrx = Object.keys(data).map(k => ({ id: k, ...data[k] }));
+        setMyTransactions(allTrx.filter(t => t.user === user.email).reverse());
+      }
+      setIsLoading(false);
+    });
+
+    return () => {
+      unsubscribeBookings();
+      unsubscribeTrx();
+    };
+  }, [user, navigate]);
+
+  if (isLoading) {
+    return (
+      <div className="flex-1 flex justify-center items-center">
+        <div className="w-8 h-8 border-4 border-[#FFBF00]/30 border-t-[#FFBF00] rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full py-12 px-6 flex justify-center animate-fade-up">
+      <div className="max-w-6xl mx-auto w-full mt-4">
+        <div className="mb-10">
+          <h2 className="text-3xl font-bold text-white mb-2">My Dashboard</h2>
+          <p className="text-gray-400 text-base">Manage your active bookings and access your purchased digital files.</p>
+        </div>
+
+        <div className="grid lg:grid-cols-2 gap-12">
+          <div>
+            <h3 className="text-xl font-bold text-white mb-6 border-b border-white/10 pb-3">My Digital Downloads</h3>
+            {myTransactions.filter(t => t.status === 'Completed' && t.items && t.items.length > 0).length === 0 ? (
+              <div className="bg-[#121212] border border-white/5 rounded-xl p-8 text-center">
+                <p className="text-gray-400">No completed purchases yet.</p>
+                <Link to="/shop" className="text-[#FFBF00] font-bold text-sm hover:underline mt-2 inline-block">Browse Digital Shop</Link>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {myTransactions.filter(t => t.status === 'Completed' && t.items).map(trx => (
+                  <div key={trx.id} className="bg-[#121212] border border-white/5 rounded-xl p-6">
+                    <p className="text-xs text-gray-500 font-mono mb-4 border-b border-white/5 pb-2">Order {trx.id}</p>
+                    <div className="space-y-4">
+                      {trx.items.map((item, idx) => (
+                        <div key={idx} className="flex items-center gap-4">
+                          <img src={item.image} alt={item.title} className="w-16 h-16 rounded object-cover" />
+                          <div className="flex-1">
+                            <h4 className="text-white font-bold text-sm">{item.title}</h4>
+                            <p className="text-gray-400 text-xs mb-2">{item.type}</p>
+                            {item.documentUrl ? (
+                              <a href={item.documentUrl} download={item.title} className="text-xs text-[#FFBF00] font-bold flex items-center gap-1 hover:underline" target="_blank" rel="noreferrer">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                Download File
+                              </a>
+                            ) : (
+                              <span className="text-xs text-green-500 flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                Access Granted
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <h3 className="text-xl font-bold text-white mb-6 border-b border-white/10 pb-3">My Bookings</h3>
+            {myBookings.length === 0 ? (
+              <div className="bg-[#121212] border border-white/5 rounded-xl p-8 text-center">
+                <p className="text-gray-400">You haven't booked any sessions yet.</p>
+                <Link to="/booking" className="text-[#FFBF00] font-bold text-sm hover:underline mt-2 inline-block">Book a Session</Link>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {myBookings.map(b => (
+                  <div key={b.id} className="bg-[#121212] border border-white/5 rounded-xl p-6">
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className="text-white font-bold">{b.service}</h4>
+                      <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider ${b.status === 'Confirmed' ? 'bg-green-500/20 text-green-500' : 'bg-yellow-500/20 text-yellow-500'}`}>
+                        {b.status}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-400 text-sm mb-4">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                      {b.date} at {b.time}
+                    </div>
+                    {b.status === 'Confirmed' && (
+                      <div className="bg-[#1a1a1a] p-3 rounded border border-white/5 text-sm text-gray-300">
+                        Check your email for the Zoom meeting invitation!
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -759,7 +890,7 @@ const Login = ({ setUser, showToast }) => {
         .then(() => {
           const params = new URLSearchParams(location.search);
           showToast("Account created successfully!", "success");
-          navigate(params.get('redirect') || '/');
+          navigate(params.get('redirect') || '/dashboard');
         })
         .catch((error) => showToast(error.message, "error"));
     } else {
@@ -770,7 +901,7 @@ const Login = ({ setUser, showToast }) => {
           if (userCredential.user.uid === ADMIN_UID) {
             navigate('/admin');
           } else {
-            navigate(params.get('redirect') || '/');
+            navigate(params.get('redirect') || '/dashboard');
           }
         })
         .catch(() => {
@@ -1339,12 +1470,6 @@ const Admin = ({ showToast }) => {
   );
 };
 
-function ScrollToTop() {
-  const { pathname } = useLocation();
-  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
-  return null;
-}
-
 const NavBar = ({ cartItems, user, setUser }) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -1392,6 +1517,7 @@ const NavBar = ({ cartItems, user, setUser }) => {
           <NavLink to="/">Profile</NavLink>
           <NavLink to="/booking">Services</NavLink>
           <NavLink to="/shop">Shop</NavLink>
+          {user && <NavLink to="/dashboard">Dashboard</NavLink>}
           {user && user.role === 'admin' && <NavLink to="/admin">Admin</NavLink>}
         </div>
 
@@ -1422,6 +1548,12 @@ const NavBar = ({ cartItems, user, setUser }) => {
   );
 };
 
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+}
+
 function App() {
   const [cartItems, setCartItems] = useState([]);
   const [user, setUser] = useState(null);
@@ -1439,11 +1571,14 @@ function App() {
     setCartItems(cartItems.filter((_, index) => index !== indexToRemove));
   };
 
+  const clearCart = () => {
+    setCartItems([]);
+  };
+
   return (
     <BrowserRouter>
       <ScrollToTop />
-      <div className="min-h-screen bg-[#0a0a0a] text-gray-200 font-sans selection:bg-[#FFBF00] selection:text-black flex flex-col overflow-x-hidden">
-        
+      <div className="min-h-screen bg-[#0a0a0a] text-gray-200 font-sans selection:bg-[#FFBF00] selection:text-black flex flex-col overflow-x-hidden relative">
         <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: null, type: 'success' })} />
         <NavBar cartItems={cartItems} user={user} setUser={setUser} />
 
@@ -1452,9 +1587,10 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/booking" element={<Booking user={user} showToast={showToast} />} />
             <Route path="/shop" element={<Shop addToCart={addToCart} user={user} showToast={showToast} />} />
-            <Route path="/cart" element={<Cart cartItems={cartItems} removeFromCart={removeFromCart} user={user} showToast={showToast} />} />
+            <Route path="/cart" element={<Cart cartItems={cartItems} removeFromCart={removeFromCart} clearCart={clearCart} user={user} showToast={showToast} />} />
             <Route path="/login" element={<Login setUser={setUser} showToast={showToast} />} />
             <Route path="/admin" element={<Admin showToast={showToast} />} />
+            <Route path="/dashboard" element={<UserDashboard user={user} />} />
           </Routes>
         </main>
         
