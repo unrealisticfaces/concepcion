@@ -20,7 +20,8 @@ export default async function handler(req, res) {
               description: description,
               currency: 'PHP',
               payment_method_types: ['gcash', 'paymaya'],
-              success_url: 'https://concepcion.vercel.app/dashboard' 
+              success_url: 'https://concepcion.vercel.app/dashboard',
+              cancel_url: 'https://concepcion.vercel.app/cart'
             }
           }
         })
