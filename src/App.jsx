@@ -1,8 +1,9 @@
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getDatabase, ref, onValue, push, set, remove, update } from "firebase/database";
+import { getDatabase, ref, get, push, set, remove, update } from "firebase/database";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile, updatePassword } from "firebase/auth";
+import mcProfile from './assets/mcprofile.jpg';
 
 const ADMIN_UID = "BkKFxqb7FWduUAeeOVnnVgvf0CR2"; 
 
@@ -164,9 +165,13 @@ const Home = () => {
           <div className="flex justify-center lg:justify-end">
             <div className="relative w-[340px] md:w-[380px] aspect-[4/5] rounded-xl overflow-hidden shadow-xl border border-white/10 group shrink-0">
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-10 pointer-events-none"></div>
-              <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=800&auto=format&fit=crop" alt="Client Profile" className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"/>
+              <img 
+                  src={mcProfile} 
+                  alt="Client Profile" 
+                  className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
+                />
               <div className="absolute bottom-6 left-6 right-6 z-20 pointer-events-none">
-                <h3 className="text-2xl font-bold text-white mb-1">Jane Doe</h3>
+                <h3 className="text-2xl font-bold text-white mb-1">Maricel C. Concepcion</h3>
                 <p className="text-[#FFBF00] text-base font-medium">Empowering professionals globally.</p>
               </div>
             </div>
@@ -270,18 +275,25 @@ const Booking = ({ user, showToast }) => {
   const [formData, setFormData] = useState({ name: '', email: '', notes: '' });
 
   useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        name: auth.currentUser?.displayName || prev.name,
+        email: user.email || prev.email
+      }));
+    }
+  }, [user]);
+
+  useEffect(() => {
     setDbServices(services);
     setIsLoading(false);
   }, []);
 
   useEffect(() => {
     if (selectedService) {
-      const availRef = ref(db, `availability/${selectedService}/${currentYear}/${currentMonth}`);
-      onValue(availRef, (snapshot) => {
+      get(ref(db, `availability/${selectedService}/${currentYear}/${currentMonth}`)).then((snapshot) => {
         setServiceAvailability(snapshot.val() || {});
-      }, (error) => {
-        console.error(error);
-      });
+      }).catch((error) => console.error(error));
       setSelectedDate(null);
       setSelectedTime(null);
     }
@@ -365,7 +377,7 @@ const Booking = ({ user, showToast }) => {
     setSelectedDate(null);
     setSelectedTime(null);
     setSelectedService(null);
-    setFormData({ name: '', email: '', notes: '' });
+    setFormData({ name: user?.displayName || '', email: user?.email || '', notes: '' });
   };
 
   return (
@@ -555,18 +567,19 @@ const Shop = ({ addToCart, user, showToast }) => {
   const [addedItems, setAddedItems] = useState({});
 
   useEffect(() => {
-    onValue(ref(db, 'products'), (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        setDbProducts(Object.keys(data).map(key => ({ id: key, ...data[key] })));
-      } else {
-        setDbProducts([]);
+    Promise.all([
+      get(ref(db, 'products')),
+      get(ref(db, 'reviews'))
+    ]).then(([prodSnap, revSnap]) => {
+      const pData = prodSnap.val();
+      if (pData) {
+        setDbProducts(Object.keys(pData).map(key => ({ id: key, ...pData[key] })));
       }
+      setAllReviews(revSnap.val() || {});
       setIsLoading(false);
-    });
-
-    onValue(ref(db, 'reviews'), (snapshot) => {
-      setAllReviews(snapshot.val() || {});
+    }).catch(error => {
+      console.error(error);
+      setIsLoading(false);
     });
   }, []);
 
@@ -624,9 +637,9 @@ const Shop = ({ addToCart, user, showToast }) => {
                     <div className="flex-1 flex flex-col p-4">
                       <h3 className="text-base font-bold text-white mb-1">{product.title}</h3>
                       
-                      <div className="flex items-center gap-2 mb-2">
-                        <StarRating rating={Math.round(ratingInfo.avg)} size="w-3 h-3" />
-                        <span className="text-[10px] text-gray-500">({ratingInfo.count})</span>
+                      <div className="flex items-center gap-2 mb-2 mt-1">
+                        <StarRating rating={Math.round(ratingInfo.avg)} size="w-4 h-4" />
+                        <span className="text-xs text-gray-400 font-medium">({ratingInfo.count})</span>
                       </div>
 
                       <span className="text-lg font-bold text-[#FFBF00] mb-4">${(parseFloat(product.price) || 0).toFixed(2)}</span>
@@ -647,15 +660,13 @@ const Shop = ({ addToCart, user, showToast }) => {
         </div>
       </div>
 
-      {/* FIX: Improved Close Button in Preview Modal */}
       {previewItem && (
         <div className="fixed inset-0 z-[100] flex justify-center items-center px-4 animate-fade-up">
           <div className="absolute inset-0 bg-black/90 backdrop-blur-md cursor-pointer" onClick={() => setPreviewItem(null)}></div>
           
           <div className="relative bg-[#121212] border border-white/10 rounded-2xl w-full max-w-4xl flex flex-col md:flex-row overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.8)] z-10 max-h-[90vh]">
             
-            {/* The newly styled Close Button ensuring it is unblocked and clear */}
-            <button onClick={() => setPreviewItem(null)} className="cursor-pointer absolute top-3 right-3 md:top-6 md:right-6 text-white z-[110] bg-black/70 hover:bg-black p-2.5 rounded-full backdrop-blur-sm transition-all border border-white/20 shadow-2xl">
+            <button onClick={() => setPreviewItem(null)} className="cursor-pointer absolute top-3 right-3 md:top-4 md:right-4 text-white z-[110] bg-black/70 hover:bg-black p-2.5 rounded-full backdrop-blur-sm transition-all border border-white/20 shadow-2xl">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
             
@@ -675,7 +686,7 @@ const Shop = ({ addToCart, user, showToast }) => {
                </div>
             </div>
 
-            <div className="w-full md:w-1/2 p-6 md:p-8 bg-black/40 overflow-y-auto">
+            <div className="w-full md:w-1/2 p-6 md:p-8 pt-16 md:pt-20 bg-black/40 overflow-y-auto">
                <h4 className="text-lg font-bold text-white mb-6 border-b border-white/10 pb-3 flex items-center justify-between">
                  Customer Reviews
                  <span className="text-sm font-normal text-gray-400">
@@ -854,62 +865,51 @@ const UserDashboard = ({ user, showToast }) => {
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewText, setReviewText] = useState('');
 
+  // ADDED: State for focused inbox message
+  const [selectedNotification, setSelectedNotification] = useState(null);
+
+  const loadData = async () => {
+    try {
+      const [bSnap, tSnap, nSnap] = await Promise.all([
+        get(ref(db, 'bookings')),
+        get(ref(db, 'transactions')),
+        get(ref(db, 'notifications'))
+      ]);
+
+      const bData = bSnap.val();
+      if (bData) {
+        const list = Object.keys(bData).map(k => ({ id: k, ...bData[k] }));
+        setMyBookings(list.filter(b => b.email === user.email).reverse());
+      }
+
+      const tData = tSnap.val();
+      if (tData) {
+        const list = Object.keys(tData).map(k => ({ id: k, ...tData[k] }));
+        setMyTransactions(list.filter(t => t.user === user.email).reverse());
+      }
+
+      const nData = nSnap.val();
+      if (nData) {
+        const list = Object.keys(nData).map(k => ({ id: k, ...nData[k] }));
+        setMyNotifications(list.filter(n => n.userEmail === user.email).sort((a,b) => b.timestamp - a.timestamp));
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!user) {
       navigate('/login');
       return;
     }
-
     const params = new URLSearchParams(window.location.search);
-    if (params.get('tab')) {
-      setActiveTab(params.get('tab'));
-    }
-
-    if (auth.currentUser?.displayName) {
-      setDisplayName(auth.currentUser.displayName);
-    }
-
-    const bookingsRef = ref(db, 'bookings');
-    const trxRef = ref(db, 'transactions');
-    const notifRef = ref(db, 'notifications');
-
-    const unsubB = onValue(bookingsRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const list = Object.keys(data).map(k => ({ id: k, ...data[k] }));
-        setMyBookings(list.filter(b => b.email === user.email).reverse());
-      } else {
-        setMyBookings([]);
-      }
-    });
-
-    const unsubT = onValue(trxRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const list = Object.keys(data).map(k => ({ id: k, ...data[k] }));
-        const userTrxs = list.filter(t => t.user === user.email);
-        setMyTransactions(userTrxs.reverse());
-      } else {
-        setMyTransactions([]);
-      }
-    });
-
-    const unsubN = onValue(notifRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const list = Object.keys(data).map(k => ({ id: k, ...data[k] }));
-        setMyNotifications(list.filter(n => n.userEmail === user.email).sort((a,b) => b.timestamp - a.timestamp));
-      } else {
-        setMyNotifications([]);
-      }
-      setIsLoading(false);
-    });
-
-    return () => {
-      unsubB();
-      unsubT();
-      unsubN();
-    };
+    if (params.get('tab')) setActiveTab(params.get('tab'));
+    if (auth.currentUser?.displayName) setDisplayName(auth.currentUser.displayName);
+    
+    loadData();
   }, [user, navigate]);
 
   const handleUpdateProfile = async (e) => {
@@ -965,13 +965,15 @@ const UserDashboard = ({ user, showToast }) => {
       setReviewRating(5);
       setReviewText('');
     } catch (error) {
-      console.error(error);
       showToast(error.message || "Failed to submit review.", "error");
     }
   };
 
   const handleMarkAsRead = (notifId) => {
-    update(ref(db, `notifications/${notifId}`), { read: true });
+    update(ref(db, `notifications/${notifId}`), { read: true }).then(() => {
+      // Update local state instantly so the user doesn't wait for refetch
+      setMyNotifications(prev => prev.map(n => n.id === notifId ? { ...n, read: true } : n));
+    });
   };
 
   if (isLoading) {
@@ -1023,7 +1025,6 @@ const UserDashboard = ({ user, showToast }) => {
           </button>
         </div>
 
-        {/* Tab Content: Downloads */}
         {activeTab === 'downloads' && (
           <div className="animate-fade-up">
             {myTransactions.filter(t => t.status === 'Completed' && t.items && t.items.length > 0).length === 0 ? (
@@ -1073,7 +1074,6 @@ const UserDashboard = ({ user, showToast }) => {
           </div>
         )}
 
-        {/* Tab Content: Bookings */}
         {activeTab === 'bookings' && (
           <div className="animate-fade-up">
             {myBookings.length === 0 ? (
@@ -1112,7 +1112,6 @@ const UserDashboard = ({ user, showToast }) => {
           </div>
         )}
 
-        {/* Tab Content: Inbox */}
         {activeTab === 'inbox' && (
           <div className="animate-fade-up">
             {myNotifications.length === 0 ? (
@@ -1122,7 +1121,14 @@ const UserDashboard = ({ user, showToast }) => {
             ) : (
               <div className="space-y-4">
                 {myNotifications.map(n => (
-                  <div key={n.id} onClick={() => !n.read && handleMarkAsRead(n.id)} className={`p-5 rounded-xl border transition-colors ${n.read ? 'bg-[#121212] border-white/5 opacity-70' : 'bg-[#1a1a1a] border-[#FFBF00]/50 shadow-[0_0_15px_rgba(255,191,0,0.15)] cursor-pointer'}`}>
+                  <div 
+                    key={n.id} 
+                    onClick={() => {
+                      if (!n.read) handleMarkAsRead(n.id);
+                      setSelectedNotification(n);
+                    }} 
+                    className={`p-5 rounded-xl border transition-colors ${n.read ? 'bg-[#121212] border-white/5 opacity-70 hover:opacity-100 cursor-pointer' : 'bg-[#1a1a1a] border-[#FFBF00]/50 shadow-[0_0_15px_rgba(255,191,0,0.15)] cursor-pointer hover:bg-[#222]'}`}
+                  >
                     <div className="flex justify-between items-start mb-3">
                       <h4 className="text-white font-bold flex items-center gap-3 text-lg">
                         {!n.read && <span className="w-2.5 h-2.5 rounded-full bg-[#FFBF00] animate-pulse shrink-0"></span>}
@@ -1130,7 +1136,8 @@ const UserDashboard = ({ user, showToast }) => {
                       </h4>
                       <span className="text-[11px] text-gray-500 font-medium whitespace-nowrap ml-4">{n.date}</span>
                     </div>
-                    <p className={`text-sm leading-relaxed ${n.read ? 'text-gray-400' : 'text-gray-200'}`}>{n.message}</p>
+                    {/* TRUNCATED PREVIEW FOR INBOX LIST */}
+                    <p className={`text-sm leading-relaxed line-clamp-2 ${n.read ? 'text-gray-400' : 'text-gray-200'}`}>{n.message}</p>
                   </div>
                 ))}
               </div>
@@ -1138,7 +1145,6 @@ const UserDashboard = ({ user, showToast }) => {
           </div>
         )}
 
-        {/* Tab Content: Settings */}
         {activeTab === 'settings' && (
           <div className="animate-fade-up">
             <div className="bg-[#121212] border border-white/5 rounded-xl p-8 max-w-lg">
@@ -1176,6 +1182,30 @@ const UserDashboard = ({ user, showToast }) => {
         )}
       </div>
 
+      {/* FULL INBOX READING MODAL */}
+      {selectedNotification && (
+        <div className="fixed inset-0 z-[100] flex justify-center items-center px-4 animate-fade-up">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm cursor-pointer" onClick={() => setSelectedNotification(null)}></div>
+          <div className="relative bg-[#121212] border border-white/10 rounded-xl w-full max-w-lg p-8 shadow-2xl z-10">
+            <button onClick={() => setSelectedNotification(null)} className="cursor-pointer absolute top-4 right-4 text-gray-400 hover:text-white">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+            
+            <h3 className="text-2xl font-bold text-white mb-2 pr-6">{selectedNotification.title}</h3>
+            <p className="text-xs text-gray-500 mb-6 border-b border-white/10 pb-4">{selectedNotification.date}</p>
+            
+            <div className="bg-[#1a1a1a] p-5 rounded-lg border border-white/5 mb-8">
+              <p className="text-gray-200 text-sm leading-relaxed whitespace-pre-wrap">{selectedNotification.message}</p>
+            </div>
+
+            <button onClick={() => setSelectedNotification(null)} className="cursor-pointer w-full bg-white/10 text-white font-bold py-2.5 rounded hover:bg-white hover:text-black transition-all">
+              Close Message
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* REVIEW MODAL */}
       {reviewingItem && (
         <div className="fixed inset-0 z-[100] flex justify-center items-center px-4 animate-fade-up">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm cursor-pointer" onClick={() => setReviewingItem(null)}></div>
@@ -1291,8 +1321,11 @@ const Admin = ({ showToast }) => {
   const [bookingSubTab, setBookingSubTab] = useState('incoming');
   const [activeSubTab, setActiveSubTab] = useState('booking_transactions');
   const [paymentPage, setPaymentPage] = useState(1);
+  const [bookingPage, setBookingPage] = useState(1);
   const [selectedBooking, setSelectedBooking] = useState(null);
   
+  const [adminMessage, setAdminMessage] = useState('');
+
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth()); 
 
@@ -1307,41 +1340,41 @@ const Admin = ({ showToast }) => {
   const [dbData, setDbData] = useState({ bookings: [], transactions: [], products: [] });
   const [isLive, setIsLive] = useState(false);
 
-  useEffect(() => {
-    const unsubscribeBookings = onValue(ref(db, 'bookings'), (snapshot) => {
-      const data = snapshot.val();
-      setDbData(prev => ({ ...prev, bookings: data ? Object.keys(data).map(k => ({ id: k, ...data[k] })) : [] }));
+  const loadAdminData = async () => {
+    try {
+      const [bSnap, tSnap, pSnap] = await Promise.all([
+        get(ref(db, 'bookings')),
+        get(ref(db, 'transactions')),
+        get(ref(db, 'products'))
+      ]);
+
+      const bData = bSnap.val();
+      const tData = tSnap.val();
+      const pData = pSnap.val();
+
+      setDbData({
+        bookings: bData ? Object.keys(bData).map(k => ({ id: k, ...bData[k] })) : [],
+        transactions: tData ? Object.keys(tData).map(k => ({ id: k, ...tData[k] })) : [],
+        products: pData ? Object.keys(pData).map(k => ({ id: k, ...pData[k] })) : []
+      });
+    } catch (e) {
+      console.error(e);
+    } finally {
       setIsLive(true);
-    }, (error) => {
-      setIsLive(true); 
-    });
+    }
+  };
 
-    const unsubscribeTrx = onValue(ref(db, 'transactions'), (snapshot) => {
-      const data = snapshot.val();
-      setDbData(prev => ({ ...prev, transactions: data ? Object.keys(data).map(k => ({ id: k, ...data[k] })) : [] }));
-    }, (error) => console.error(error));
-
-    const unsubscribeProd = onValue(ref(db, 'products'), (snapshot) => {
-      const data = snapshot.val();
-      setDbData(prev => ({ ...prev, products: data ? Object.keys(data).map(k => ({ id: k, ...data[k] })) : [] }));
-    }, (error) => console.error(error));
-
-    return () => {
-      unsubscribeBookings();
-      unsubscribeTrx();
-      unsubscribeProd();
-    };
+  useEffect(() => {
+    loadAdminData();
   }, []);
 
   useEffect(() => {
     if (adminSelectedDate && adminSelectedService) {
-      const slotsRef = ref(db, `availability/${adminSelectedService}/${currentYear}/${currentMonth}/${adminSelectedDate}`);
-      const unsubscribeSlots = onValue(slotsRef, (snapshot) => {
-        const val = snapshot.val();
-        setAdminSlots(val && Array.isArray(val) ? val : []);
-      }, (error) => console.error(error));
-      
-      return () => unsubscribeSlots();
+      get(ref(db, `availability/${adminSelectedService}/${currentYear}/${currentMonth}/${adminSelectedDate}`))
+        .then((snapshot) => {
+          const val = snapshot.val();
+          setAdminSlots(val && Array.isArray(val) ? val : []);
+        }).catch(err => console.error(err));
     }
   }, [adminSelectedDate, adminSelectedService, currentMonth, currentYear]);
 
@@ -1420,6 +1453,7 @@ const Admin = ({ showToast }) => {
       };
       
       await push(prodRef, productPayload);
+      await loadAdminData();
       
       showToast("Product uploaded successfully to Database!", "success");
       setShowProductModal(false);
@@ -1432,30 +1466,33 @@ const Admin = ({ showToast }) => {
   };
 
   const handleSeedProducts = () => {
-    defaultProducts.forEach(product => {
+    Promise.all(defaultProducts.map(product => 
       push(ref(db, 'products'), {
         title: product.title,
         price: product.price || 0,
         type: product.type,
         desc: product.desc,
         image: product.image
-      });
+      })
+    )).then(() => {
+      loadAdminData();
+      showToast("Demo products seeded!", "success");
     });
-    showToast("Demo products seeded!", "success");
   };
 
-  // ADMIN ACTION HANDLERS WITH NOTIFICATIONS
   const handleApproveBooking = (booking) => {
     update(ref(db, `bookings/${booking.id}`), { status: "Confirmed" }).then(() => {
       push(ref(db, 'notifications'), {
         userEmail: booking.email,
         title: "Booking Confirmed!",
-        message: `Your booking for ${booking.service} on ${booking.date} at ${booking.time} has been approved. Make sure to check your email for any specific meeting links or instructions.`,
+        message: `Your booking for ${booking.service} on ${booking.date} at ${booking.time} has been approved. Check your email for any specific meeting links or instructions.`,
         timestamp: Date.now(),
         read: false,
         date: new Date().toLocaleDateString()
       });
       setSelectedBooking(null);
+      setAdminMessage('');
+      loadAdminData();
       showToast("Booking Approved and user notified!", "success");
     }).catch(err => showToast(err.message, "error"));
   };
@@ -1471,6 +1508,8 @@ const Admin = ({ showToast }) => {
         date: new Date().toLocaleDateString()
       });
       setSelectedBooking(null);
+      setAdminMessage('');
+      loadAdminData();
       showToast("Booking Declined and user notified.", "success");
     }).catch(err => showToast(err.message, "error"));
   };
@@ -1486,7 +1525,25 @@ const Admin = ({ showToast }) => {
         date: new Date().toLocaleDateString()
       });
       setSelectedBooking(null);
+      setAdminMessage('');
+      loadAdminData();
       showToast("Booking Deployed and user notified.", "success");
+    }).catch(err => showToast(err.message, "error"));
+  };
+
+  const handleSendCustomMessage = (booking) => {
+    if (!adminMessage.trim()) return showToast("Message cannot be empty.", "error");
+    
+    push(ref(db, 'notifications'), {
+      userEmail: booking.email,
+      title: `Message regarding your booking: ${booking.service}`,
+      message: adminMessage,
+      timestamp: Date.now(),
+      read: false,
+      date: new Date().toLocaleDateString()
+    }).then(() => {
+      showToast("Message sent to user!", "success");
+      setAdminMessage('');
     }).catch(err => showToast(err.message, "error"));
   };
 
@@ -1500,9 +1557,14 @@ const Admin = ({ showToast }) => {
     if (bookingSubTab === 'approved') return b?.status === 'Confirmed';
     if (bookingSubTab === 'deployed') return b?.status === 'Deployed';
     return true;
-  });
+  }).reverse();
 
-  const filteredTransactions = displayTransactions?.filter(t => t?.type === (activeSubTab === 'booking_transactions' ? 'Booking' : 'Purchase')) || [];
+  const indexOfLastBooking = bookingPage * 10;
+  const indexOfFirstBooking = indexOfLastBooking - 10;
+  const currentBookings = filteredBookings.slice(indexOfFirstBooking, indexOfLastBooking);
+  const totalBookingPages = Math.ceil(filteredBookings.length / 10);
+
+  const filteredTransactions = (displayTransactions?.filter(t => t?.type === (activeSubTab === 'booking_transactions' ? 'Booking' : 'Purchase')) || []).reverse();
   const indexOfLastTrx = paymentPage * 10;
   const indexOfFirstTrx = indexOfLastTrx - 10;
   const currentTransactions = filteredTransactions.slice(indexOfFirstTrx, indexOfLastTrx);
@@ -1514,18 +1576,18 @@ const Admin = ({ showToast }) => {
         
         <div className="flex items-center justify-between mb-4 pl-3">
           <h3 className="text-gray-500 text-[10px] font-bold tracking-widest uppercase">Admin Panel</h3>
-          <div className="flex items-center gap-1.5" title="Database Connection Status">
-            <span className={`w-2 h-2 rounded-full ${isLive ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
-            <span className="text-[9px] text-gray-500 font-mono uppercase">{isLive ? 'Live Sync' : 'Connecting'}</span>
+          <div className="flex items-center gap-1.5">
+            <span className={`w-2 h-2 rounded-full ${isLive ? 'bg-green-500' : 'bg-red-500'}`}></span>
+            <span className="text-[9px] text-gray-500 font-mono uppercase">{isLive ? 'Fetched' : 'Loading'}</span>
           </div>
         </div>
 
         <div className="mb-2">
           <h3 className="text-gray-500 text-[10px] font-bold tracking-widest uppercase mb-2 pl-3">Bookings</h3>
-          <button onClick={() => { setActiveTab('bookings'); setBookingSubTab('incoming'); }} className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'bookings' && bookingSubTab === 'incoming' ? 'bg-[#FFBF00]/10 text-[#FFBF00]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>All Incoming</button>
-          <button onClick={() => { setActiveTab('bookings'); setBookingSubTab('pending'); }} className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'bookings' && bookingSubTab === 'pending' ? 'bg-[#FFBF00]/10 text-[#FFBF00]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>Pending</button>
-          <button onClick={() => { setActiveTab('bookings'); setBookingSubTab('approved'); }} className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'bookings' && bookingSubTab === 'approved' ? 'bg-[#FFBF00]/10 text-[#FFBF00]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>Approved</button>
-          <button onClick={() => { setActiveTab('bookings'); setBookingSubTab('deployed'); }} className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'bookings' && bookingSubTab === 'deployed' ? 'bg-[#FFBF00]/10 text-[#FFBF00]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>Deployed</button>
+          <button onClick={() => { setActiveTab('bookings'); setBookingSubTab('incoming'); setBookingPage(1); }} className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'bookings' && bookingSubTab === 'incoming' ? 'bg-[#FFBF00]/10 text-[#FFBF00]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>All Incoming</button>
+          <button onClick={() => { setActiveTab('bookings'); setBookingSubTab('pending'); setBookingPage(1); }} className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'bookings' && bookingSubTab === 'pending' ? 'bg-[#FFBF00]/10 text-[#FFBF00]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>Pending</button>
+          <button onClick={() => { setActiveTab('bookings'); setBookingSubTab('approved'); setBookingPage(1); }} className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'bookings' && bookingSubTab === 'approved' ? 'bg-[#FFBF00]/10 text-[#FFBF00]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>Approved</button>
+          <button onClick={() => { setActiveTab('bookings'); setBookingSubTab('deployed'); setBookingPage(1); }} className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'bookings' && bookingSubTab === 'deployed' ? 'bg-[#FFBF00]/10 text-[#FFBF00]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>Deployed</button>
         </div>
         
         <button onClick={() => {setActiveTab('availability'); setAdminSelectedDate(null);}} className={`cursor-pointer w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'availability' ? 'bg-[#FFBF00]/10 text-[#FFBF00]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
@@ -1562,32 +1624,60 @@ const Admin = ({ showToast }) => {
           <>
             {activeTab === 'bookings' && (
               <div className="animate-fade-up max-w-4xl">
-                <h2 className="text-2xl font-bold text-white mb-6 uppercase tracking-wider">{bookingSubTab} Bookings</h2>
-                {filteredBookings.length === 0 ? (
+                <div className="flex justify-between items-center mb-6">
+                   <h2 className="text-2xl font-bold text-white uppercase tracking-wider">{bookingSubTab} Bookings</h2>
+                   <button onClick={loadAdminData} className="cursor-pointer text-xs font-bold text-gray-400 hover:text-white flex items-center gap-1 border border-white/10 px-3 py-1.5 rounded-full hover:bg-white/5">
+                     <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                     Refresh Data
+                   </button>
+                </div>
+
+                {currentBookings.length === 0 ? (
                   <div className="text-gray-500 text-sm py-8 px-4 text-center border border-dashed border-white/10 rounded-xl">No {bookingSubTab} bookings found.</div>
                 ) : (
-                  <div className="bg-[#121212] border border-white/5 rounded-xl overflow-hidden">
-                    {filteredBookings.map((b, idx) => (
-                      <div key={b?.id || idx} className={`p-6 flex justify-between items-center ${idx !== filteredBookings.length - 1 ? 'border-b border-white/5' : ''}`}>
-                        <div>
-                          <h4 className="text-white font-bold">
-                            {b?.name || 'Unknown User'}
-                            {typeof b?.id === 'string' && String(b.id).includes('mock') && <span className="ml-2 bg-gray-800 text-gray-400 text-[10px] px-2 py-0.5 rounded border border-gray-700">DEMO</span>}
-                          </h4>
-                          <p className="text-gray-400 text-sm">{b?.service || 'Service'}</p>
-                        </div>
-                        <div className="flex items-center gap-6">
-                          <div className="text-right hidden md:block">
-                            <span className={`text-xs font-bold px-2 py-1 rounded uppercase tracking-wider ${b?.status === 'Confirmed' ? 'bg-green-500/20 text-green-500' : b?.status === 'Declined' ? 'bg-red-500/20 text-red-500' : b?.status === 'Deployed' ? 'bg-blue-500/20 text-blue-500' : 'bg-yellow-500/20 text-yellow-500'}`}>{b?.status || 'Pending'}</span>
-                            <p className="text-white text-sm mt-1">{b?.date} {b?.time && `at ${b.time}`}</p>
+                  <>
+                    <div className="bg-[#121212] border border-white/5 rounded-xl overflow-hidden">
+                      {currentBookings.map((b, idx) => (
+                        <div key={b?.id || idx} className={`p-6 flex justify-between items-center ${idx !== currentBookings.length - 1 ? 'border-b border-white/5' : ''}`}>
+                          <div>
+                            <h4 className="text-white font-bold">
+                              {b?.name || 'Unknown User'}
+                              {typeof b?.id === 'string' && String(b.id).includes('mock') && <span className="ml-2 bg-gray-800 text-gray-400 text-[10px] px-2 py-0.5 rounded border border-gray-700">DEMO</span>}
+                            </h4>
+                            <p className="text-gray-400 text-sm">{b?.service || 'Service'}</p>
                           </div>
-                          <button onClick={() => setSelectedBooking(b)} className="cursor-pointer bg-white/5 hover:bg-white/10 text-white text-xs font-bold py-2 px-4 rounded border border-white/10 transition-colors">
-                            View Details
-                          </button>
+                          <div className="flex items-center gap-6">
+                            <div className="text-right hidden md:block">
+                              <span className={`text-xs font-bold px-2 py-1 rounded uppercase tracking-wider ${b?.status === 'Confirmed' ? 'bg-green-500/20 text-green-500' : b?.status === 'Declined' ? 'bg-red-500/20 text-red-500' : b?.status === 'Deployed' ? 'bg-blue-500/20 text-blue-500' : 'bg-yellow-500/20 text-yellow-500'}`}>{b?.status || 'Pending'}</span>
+                              <p className="text-white text-sm mt-1">{b?.date} {b?.time && `at ${b.time}`}</p>
+                            </div>
+                            <button onClick={() => { setSelectedBooking(b); setAdminMessage(''); }} className="cursor-pointer bg-white/5 hover:bg-white/10 text-white text-xs font-bold py-2 px-4 rounded border border-white/10 transition-colors">
+                              View Details
+                            </button>
+                          </div>
                         </div>
+                      ))}
+                    </div>
+                    {totalBookingPages > 1 && (
+                      <div className="flex justify-between items-center mt-4 px-4 py-3 bg-[#121212] border border-white/5 rounded-xl">
+                        <button 
+                          onClick={() => setBookingPage(prev => Math.max(prev - 1, 1))}
+                          disabled={bookingPage === 1}
+                          className="cursor-pointer text-sm text-gray-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                        >
+                          &larr; Previous
+                        </button>
+                        <span className="text-xs text-gray-500 font-bold uppercase tracking-widest">Page {bookingPage} of {totalBookingPages}</span>
+                        <button 
+                          onClick={() => setBookingPage(prev => Math.min(prev + 1, totalBookingPages))}
+                          disabled={bookingPage === totalBookingPages}
+                          className="cursor-pointer text-sm text-gray-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                        >
+                          Next &rarr;
+                        </button>
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  </>
                 )}
               </div>
             )}
@@ -1595,12 +1685,12 @@ const Admin = ({ showToast }) => {
             {selectedBooking && (
               <div className="fixed inset-0 z-[100] flex justify-center items-center px-4 animate-fade-up">
                 <div className="absolute inset-0 bg-black/80 backdrop-blur-sm cursor-pointer" onClick={() => setSelectedBooking(null)}></div>
-                <div className="relative bg-[#121212] border border-white/10 rounded-xl w-full max-w-lg p-8 shadow-2xl z-10">
+                <div className="relative bg-[#121212] border border-white/10 rounded-xl w-full max-w-lg p-8 shadow-2xl z-10 max-h-[95vh] overflow-y-auto">
                   <button onClick={() => setSelectedBooking(null)} className="cursor-pointer absolute top-4 right-4 text-gray-400 hover:text-white">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                   </button>
                   <h3 className="text-2xl font-bold text-white mb-6 border-b border-white/10 pb-4">Booking Details</h3>
-                  <div className="space-y-4 mb-8">
+                  <div className="space-y-4 mb-6">
                     <div>
                       <span className="block text-gray-500 text-xs font-bold uppercase tracking-widest mb-1">Student Name</span>
                       <span className="text-white">{selectedBooking?.name || 'Unknown'}</span>
@@ -1624,6 +1714,27 @@ const Admin = ({ showToast }) => {
                       <p className="text-gray-300 text-sm leading-relaxed">{selectedBooking?.notes || 'No notes provided.'}</p>
                     </div>
                   </div>
+
+                  {!String(selectedBooking?.id).includes('mock') && (
+                    <div className="bg-black/30 p-4 rounded-lg border border-white/5 mb-6">
+                      <span className="block text-gray-500 text-xs font-bold uppercase tracking-widest mb-2">Message User</span>
+                      <textarea 
+                        rows="2" 
+                        value={adminMessage} 
+                        onChange={e => setAdminMessage(e.target.value)} 
+                        className="w-full bg-[#121212] border border-white/10 rounded px-3 py-2 text-white focus:outline-none focus:border-[#FFBF00] resize-none text-sm mb-2" 
+                        placeholder="Need more details? Send them a message..."
+                      ></textarea>
+                      <div className="flex justify-end">
+                        <button 
+                          onClick={() => handleSendCustomMessage(selectedBooking)} 
+                          className="cursor-pointer bg-white/10 text-white text-xs font-bold py-1.5 px-4 rounded hover:bg-[#FFBF00] hover:text-black transition-colors"
+                        >
+                          Send Message
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   
                   <div className="flex gap-4">
                     {selectedBooking?.status === 'Pending' && !String(selectedBooking?.id).includes('mock') && (
@@ -1763,7 +1874,10 @@ const Admin = ({ showToast }) => {
                       <div className="flex gap-2">
                         {typeof product?.id !== 'number' && (
                           <button onClick={() => {
-                            remove(ref(db, `products/${product.id}`)).then(()=> showToast("Product node removed.", "success"));
+                            remove(ref(db, `products/${product.id}`)).then(()=> {
+                              showToast("Product node removed.", "success");
+                              loadAdminData();
+                            });
                           }} className="cursor-pointer text-red-500 hover:bg-red-500 hover:text-white text-xs font-medium px-3 py-1.5 border border-red-500/30 rounded transition-colors">Delete</button>
                         )}
                       </div>
@@ -1775,10 +1889,15 @@ const Admin = ({ showToast }) => {
 
             {activeTab === 'payments' && (
               <div className="animate-fade-up max-w-4xl">
-                <h2 className="text-2xl font-bold text-white mb-2">
-                  {activeSubTab === 'booking_transactions' ? 'Booking Transactions' : 'Purchase Transactions'}
-                </h2>
-                <p className="text-gray-400 text-sm mb-6">Overview of all successful and pending payments.</p>
+                <div className="flex justify-between items-center mb-6">
+                   <h2 className="text-2xl font-bold text-white uppercase tracking-wider">
+                     {activeSubTab === 'booking_transactions' ? 'Booking Transactions' : 'Purchase Transactions'}
+                   </h2>
+                   <button onClick={loadAdminData} className="cursor-pointer text-xs font-bold text-gray-400 hover:text-white flex items-center gap-1 border border-white/10 px-3 py-1.5 rounded-full hover:bg-white/5">
+                     <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                     Refresh Data
+                   </button>
+                </div>
                 
                 {currentTransactions.length === 0 ? (
                   <div className="text-gray-500 text-sm py-8 px-4 text-center border border-dashed border-white/10 rounded-xl">No transactions found.</div>
@@ -1861,7 +1980,6 @@ const NavBar = ({ cartItems, user, setUser }) => {
   const isActive = (path) => location.pathname === path;
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -1877,21 +1995,6 @@ const NavBar = ({ cartItems, user, setUser }) => {
     });
     return unsubscribe;
   }, [setUser]);
-
-  useEffect(() => {
-    if (!user || user.role === 'admin') { 
-      setUnreadCount(0); 
-      return; 
-    }
-    const unsub = onValue(ref(db, 'notifications'), snap => {
-       const val = snap.val();
-       if(val) {
-          const list = Object.values(val);
-          setUnreadCount(list.filter(n => n.userEmail === user.email && !n.read).length);
-       } else setUnreadCount(0);
-    });
-    return () => unsub();
-  }, [user]);
 
   const handleLogout = () => {
     signOut(auth).then(() => {
@@ -1919,7 +2022,7 @@ const NavBar = ({ cartItems, user, setUser }) => {
         
         <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="cursor-pointer text-white font-extrabold text-2xl flex items-center gap-2 hover:opacity-80 transition-opacity z-50">
           <span className="w-2.5 h-2.5 bg-[#FFBF00] rounded-full inline-block shadow-[0_0_8px_rgba(255,191,0,0.8)]"></span>
-          Client<span className="text-[#FFBF00]">Name</span>
+          Maricel<span className="text-[#FFBF00]">Concepcion</span>
         </Link>
         
         <div className="hidden md:flex gap-10 text-[11px] font-bold tracking-widest uppercase mt-1">
@@ -1943,13 +2046,6 @@ const NavBar = ({ cartItems, user, setUser }) => {
               </button>
             )}
           </div>
-
-          {user && user.role !== 'admin' && (
-            <Link to="/dashboard?tab=inbox" onClick={() => setIsMobileMenuOpen(false)} className="cursor-pointer relative text-gray-400 hover:text-white transition-colors ml-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 md:h-6 md:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-              {unreadCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full animate-pulse border border-[#0a0a0a]">{unreadCount}</span>}
-            </Link>
-          )}
 
           <Link to="/cart" onClick={() => setIsMobileMenuOpen(false)} className="cursor-pointer group flex items-center gap-2 lg:gap-3 bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 lg:px-4 lg:py-2 rounded-full transition-all text-xs font-bold text-white relative">
             <span className="hidden sm:inline">CART</span>
@@ -2046,33 +2142,28 @@ function App() {
           </Routes>
         </main>
         
-        {/* UPDATED: Footer with Social Media Integrations */}
-        <footer className="w-full bg-[#121212] border-t border-white/5 py-10 flex justify-center px-6 mt-auto z-10 relative">
-          <div className="max-w-6xl w-full flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="text-center md:text-left">
-              <Link to="/" className="text-white font-extrabold text-xl flex items-center gap-2 hover:opacity-80 transition-opacity justify-center md:justify-start mb-2">
-                <span className="w-2 h-2 bg-[#FFBF00] rounded-full inline-block"></span>
-                Client<span className="text-[#FFBF00]">Name</span>
-              </Link>
-              <p className="text-gray-500 text-[10px] uppercase tracking-widest font-bold">
-                &copy; 2026 Client Name. All Rights Reserved.
+        <footer className="w-full bg-[#121212] border-t border-white/5 py-6 flex justify-center px-6 mt-auto z-10 relative">
+          <div className="max-w-6xl w-full flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="flex items-center gap-3">
+              <span className="w-2 h-2 bg-[#FFBF00] rounded-full inline-block"></span>
+              <span className="text-white font-extrabold text-lg">M<span className="text-[#FFBF00]">C</span></span>
+              <span className="text-gray-600 mx-2 hidden sm:inline">|</span>
+              <p className="text-gray-500 text-[10px] uppercase tracking-widest font-bold hidden sm:block">
+                &copy; 2026 All Rights Reserved
               </p>
+              </div>
             </div>
 
             <div className="flex items-center gap-6">
-              {/* Facebook */}
-              <a href="https://facebook.com" target="_blank" rel="noreferrer" className="text-gray-400 hover:text-[#FFBF00] transition-transform hover:scale-110">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z"/></svg>
+              <a href="https://www.facebook.com/GodsFEIvor" target="_blank" rel="noreferrer" className="text-gray-400 hover:text-[#FFBF00] transition-transform hover:scale-110">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z"/></svg>
               </a>
-              {/* WhatsApp */}
-              <a href="https://wa.me/1234567890" target="_blank" rel="noreferrer" className="text-gray-400 hover:text-[#FFBF00] transition-transform hover:scale-110">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.323-.297-.124-1.758-.867-2.03-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.099-.297-.124-1.255-.462-2.39-1.305-.88-.653-1.473-1.46-1.646-1.757-.173-.297-.018-.458.13-.58.134-.11.297-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.396-.272.322-1.04 1.014-1.04 2.476 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/></svg>
+              <a href="https://www.facebook.com/GodsFEIvor" target="_blank" rel="noreferrer" className="text-gray-400 hover:text-[#FFBF00] transition-transform hover:scale-110">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.145 2 11.259c0 2.906 1.488 5.485 3.82 7.159v3.456l3.52-1.94c1.558.428 3.195.666 4.66.666 5.523 0 10-4.145 10-9.259S17.523 2 12 2zm1.096 12.228l-2.825-3.018-5.508 3.018 6.046-6.425 2.898 3.018 5.434-3.018-6.045 6.425z"/></svg>
               </a>
-              {/* TikTok */}
-              <a href="https://tiktok.com" target="_blank" rel="noreferrer" className="text-gray-400 hover:text-[#FFBF00] transition-transform hover:scale-110">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.12-3.44-3.17-3.64-5.46-.24-2.58.74-5.17 2.61-6.91 1.59-1.46 3.8-2.22 5.99-2.01v4.11c-1.14-.14-2.33.15-3.23.88-.93.76-1.43 1.94-1.34 3.13.06 1.24.74 2.37 1.81 2.96 1.16.63 2.58.64 3.75.14.93-.41 1.63-1.25 1.83-2.24.06-.31.08-.63.08-.94V.02z"/></svg>
+              <a href="https://www.instagram.com/breakthroughs_with_mc" target="_blank" rel="noreferrer" className="hover:text-[#FFBF00] transition-transform hover:scale-110">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.173.055 1.81.252 2.234.417.564.217.966.477 1.386.897.42.42.68.822.897 1.386.165.424.362 1.06.417 2.234.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.055 1.173-.252 1.81-.417 2.234-.217.564-.477.966-.897 1.386-.42.42-.822.68-1.386.897-.424.165-1.06.362-2.234.417-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.173-.055-1.81-.252-2.234-.417-.564-.217-.966-.477-1.386-.897-.42-.42-.68-.822-.897-1.386-.165-.424-.362-1.06-.417-2.234-.058-1.266-.07-1.646-.07-4.85s.012-3.584.07-4.85c.055-1.173.252-1.81.417-2.234.217-.564.477-.966.897-1.386.42-.42.822-.68 1.386-.897.424-.165 1.06-.362 2.234-.417.265-.125.617-.184 1.092-.206.57-.026.757-.03 2.257-.03zm0-2.163c-3.258 0-3.667.014-4.947.072-1.275.058-2.146.26-2.906.557-.785.303-1.448.71-2.112 1.374-.664.664-1.071 1.327-1.374 2.112-.297.76-.5 1.631-.557 2.906-.058 1.28-.072 1.689-.072 4.947s.014 3.667.072 4.947c.058 1.275.26 2.146.557 2.906.303.785.71 1.448 1.374 2.112.664.664 1.327 1.071 2.112 1.374.76.297 1.631.5 2.906.557 1.28.058 1.689.072 4.947.072s3.667-.014 4.947-.072c1.275-.058 2.146-.26 2.906-.557.785-.303 1.448-.71 2.112-1.374.664-.664 1.071-1.327 1.374-2.112.297-.76.5-1.631.557-2.906.058-1.28.072-1.689.072-4.947s-.014-3.667-.072-4.947c-.058-1.275-.26-2.146-.557-2.906-.303-.785-.71-1.448-1.374-2.112-.664-.664-1.327-1.071-2.112-1.374-.76-.297-1.631-.5-2.906-.557-1.28-.058-1.689-.072-4.947-.072zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.791-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.209-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
               </a>
-            </div>
           </div>
         </footer>
       </div>
