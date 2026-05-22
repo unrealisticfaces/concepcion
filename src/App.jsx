@@ -21,24 +21,6 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const db = getDatabase(app);
 const auth = getAuth(app);
 
-const defaultProducts = [
-  { id: 1, title: "Mastering Virtual Assistance", price: 29.99, type: "eBook", desc: "A comprehensive 150-page guide covering client acquisition, system setup, and scaling your VA business from scratch.", image: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=600&auto=format&fit=crop" },
-  { id: 2, title: "The Confident Host", price: 15.00, type: "Digital Guide", desc: "My personal scripts, warm-up routines, and stage presence techniques to own any room or corporate event.", image: "https://images.unsplash.com/photo-1589156280159-27698a70f29e?q=80&w=600&auto=format&fit=crop" },
-  { id: 3, title: "Teacher's Planner 2026", price: 45.00, type: "Physical Book", desc: "A beautifully bound, undated 12-month planner designed specifically for educators juggling multiple classes and side hustles.", image: "https://images.unsplash.com/photo-1506784365847-bbad939e9335?q=80&w=600&auto=format&fit=crop" },
-  { id: 4, title: "Public Speaking Mastery", price: 99.00, type: "Video Course", desc: "A 4-hour high-definition video course breaking down vocal tonality, crowd control, and storytelling mechanics.", image: "https://images.unsplash.com/photo-1475721025505-154dfc4be788?q=80&w=600&auto=format&fit=crop" }
-];
-
-const mockBookings = [
-  { id: "mock1", name: "Marcus Thorne", email: "marcus@example.com", service: "Virtual Assistant Consultation", date: "2026-05-15", time: "11:00 AM", status: "Confirmed", notes: "I need help auditing my client onboarding workflow. It currently takes too much manual effort." },
-  { id: "mock2", name: "Sarah Jenkins", email: "sarah@example.com", service: "1-on-1 Mentorship Class", date: "2026-05-18", time: "03:00 PM", status: "Pending", notes: "Looking to improve my stage presence for an upcoming corporate seminar next month." }
-];
-
-const mockTransactions = [
-  { id: "TRX-8921", user: "Marcus Thorne", type: "Booking", item: "Virtual Assistant Consultation", amount: 40.00, date: "May 10, 2026", status: "Completed" },
-  { id: "TRX-8922", user: "Elena Rodriguez", type: "Purchase", item: "Mastering Virtual Assistance eBook", amount: 29.99, date: "May 11, 2026", status: "Completed" },
-  { id: "TRX-8923", user: "Sarah Jenkins", type: "Booking", item: "1-on-1 Mentorship Class", amount: 50.00, date: "May 12, 2026", status: "Pending" }
-];
-
 const services = [
   { id: 1, title: "1-on-1 Mentorship Class", duration: "60 Min", price: 50.00, desc: "Personalized coaching tailored to your specific goals." },
   { id: 2, title: "Virtual Assistant Consultation", duration: "45 Min", price: 40.00, desc: "System setup, client management, and workflow audits." },
@@ -407,7 +389,7 @@ const Booking = ({ user, showToast }) => {
                 >
                   <div className="flex justify-between items-start mb-2">
                     <h3 className="text-lg font-bold text-white">{service.title}</h3>
-                    <div className="text-lg font-bold text-[#FFBF00]">${(service.price || 0).toFixed(2)}</div>
+                    <div className="text-lg font-bold text-[#FFBF00]">₱{(service.price || 0).toFixed(2)}</div>
                   </div>
                   <p className="text-gray-400 text-sm mb-3">{service.desc}</p>
                   <div className="flex items-center gap-2 text-gray-500 text-sm font-medium">
@@ -604,7 +586,7 @@ const Shop = ({ addToCart, user, showToast }) => {
     setTimeout(() => setAddedItems(prev => ({ ...prev, [product.id]: false })), 2000);
   };
 
-  const displayProducts = dbProducts.length > 0 ? dbProducts : defaultProducts;
+  const displayProducts = dbProducts;
 
   return (
     <>
@@ -616,8 +598,8 @@ const Shop = ({ addToCart, user, showToast }) => {
           </div>
           
           {isLoading ? (
-             <div className="flex justify-center items-center h-64">
-               <div className="w-8 h-8 border-4 border-[#FFBF00]/30 border-t-[#FFBF00] rounded-full animate-spin"></div>
+             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full">
+               {[1,2,3,4].map(i => <div key={i} className="w-full h-72 bg-[#121212] rounded-lg animate-pulse border border-white/5"></div>)}
              </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -642,7 +624,7 @@ const Shop = ({ addToCart, user, showToast }) => {
                         <span className="text-xs text-gray-400 font-medium">({ratingInfo.count})</span>
                       </div>
 
-                      <span className="text-lg font-bold text-[#FFBF00] mb-4">${(parseFloat(product.price) || 0).toFixed(2)}</span>
+                      <span className="text-lg font-bold text-[#FFBF00] mb-4">₱{(parseFloat(product.price) || 0).toFixed(2)}</span>
                       <div className="mt-auto grid grid-cols-2 gap-2">
                         <button onClick={() => setPreviewItem(product)} className="cursor-pointer text-sm font-medium text-white border border-white/20 py-2 rounded hover:bg-white hover:text-black transition-colors">
                           Preview
@@ -679,7 +661,7 @@ const Shop = ({ addToCart, user, showToast }) => {
                <p className="text-gray-300 text-sm md:text-base mb-8 leading-relaxed">{previewItem.desc}</p>
                
                <div className="flex items-center justify-between mt-auto pt-6 border-t border-white/10">
-                  <span className="text-3xl font-bold text-white">${(parseFloat(previewItem.price) || 0).toFixed(2)}</span>
+                  <span className="text-3xl font-bold text-white">₱{(parseFloat(previewItem.price) || 0).toFixed(2)}</span>
                   <button onClick={() => { handleAddToCart(previewItem); setPreviewItem(null); }} className="cursor-pointer bg-[#FFBF00] text-black font-bold py-3 px-8 rounded hover:bg-white transition-all shadow-[0_0_15px_rgba(255,191,0,0.2)]">
                     Add to Cart
                   </button>
@@ -812,7 +794,7 @@ const Cart = ({ cartItems, removeFromCart, user, showToast, clearCart }) => {
                     <h4 className="text-white font-bold text-lg">{item.title}</h4>
                     <p className="text-gray-400 text-sm">{item.type}</p>
                   </div>
-                  <div className="text-xl font-bold text-[#FFBF00]">${(parseFloat(item.price) || 0).toFixed(2)}</div>
+                  <div className="text-xl font-bold text-[#FFBF00]">₱{(parseFloat(item.price) || 0).toFixed(2)}</div>
                   <button onClick={() => removeFromCart(index)} className="cursor-pointer text-gray-500 hover:text-red-500 p-2">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                   </button>
@@ -823,7 +805,7 @@ const Cart = ({ cartItems, removeFromCart, user, showToast, clearCart }) => {
               <h3 className="text-xl font-bold text-white mb-4">Order Summary</h3>
               <div className="flex justify-between text-gray-300 mb-3 text-base">
                 <span>Subtotal ({cartItems.length} items)</span>
-                <span>${total.toFixed(2)}</span>
+                <span>₱{total.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-gray-300 mb-6 pb-6 border-b border-white/10 text-base">
                 <span>Taxes</span>
@@ -865,7 +847,6 @@ const UserDashboard = ({ user, showToast }) => {
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewText, setReviewText] = useState('');
 
-  // ADDED: State for focused inbox message
   const [selectedNotification, setSelectedNotification] = useState(null);
 
   const loadData = async () => {
@@ -971,9 +952,13 @@ const UserDashboard = ({ user, showToast }) => {
 
   const handleMarkAsRead = (notifId) => {
     update(ref(db, `notifications/${notifId}`), { read: true }).then(() => {
-      // Update local state instantly so the user doesn't wait for refetch
       setMyNotifications(prev => prev.map(n => n.id === notifId ? { ...n, read: true } : n));
     });
+  };
+
+  const handleCopyId = (id) => {
+    navigator.clipboard.writeText(id);
+    showToast("ID copied to clipboard!", "success");
   };
 
   if (isLoading) {
@@ -1036,10 +1021,13 @@ const UserDashboard = ({ user, showToast }) => {
               <div className="space-y-4">
                 {myTransactions.filter(t => t.status === 'Completed' && t.items).map(trx => (
                   <div key={trx.id} className="bg-[#121212] border border-white/5 rounded-xl p-6">
-                    <p className="text-xs text-gray-500 font-mono mb-4 border-b border-white/5 pb-2 flex justify-between">
-                      <span>Order {trx.id}</span>
+                    <div className="text-xs text-gray-500 font-mono mb-4 border-b border-white/5 pb-2 flex justify-between">
+                      <span onClick={() => handleCopyId(trx.id)} className="cursor-pointer hover:text-white flex items-center gap-1" title="Click to copy ID">
+                        Order {trx.id}
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                      </span>
                       <span>{trx.date}</span>
-                    </p>
+                    </div>
                     <div className="space-y-6">
                       {trx.items.map((item, idx) => (
                         <div key={idx} className="flex items-center gap-4">
@@ -1136,7 +1124,6 @@ const UserDashboard = ({ user, showToast }) => {
                       </h4>
                       <span className="text-[11px] text-gray-500 font-medium whitespace-nowrap ml-4">{n.date}</span>
                     </div>
-                    {/* TRUNCATED PREVIEW FOR INBOX LIST */}
                     <p className={`text-sm leading-relaxed line-clamp-2 ${n.read ? 'text-gray-400' : 'text-gray-200'}`}>{n.message}</p>
                   </div>
                 ))}
@@ -1182,7 +1169,6 @@ const UserDashboard = ({ user, showToast }) => {
         )}
       </div>
 
-      {/* FULL INBOX READING MODAL */}
       {selectedNotification && (
         <div className="fixed inset-0 z-[100] flex justify-center items-center px-4 animate-fade-up">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm cursor-pointer" onClick={() => setSelectedNotification(null)}></div>
@@ -1205,7 +1191,6 @@ const UserDashboard = ({ user, showToast }) => {
         </div>
       )}
 
-      {/* REVIEW MODAL */}
       {reviewingItem && (
         <div className="fixed inset-0 z-[100] flex justify-center items-center px-4 animate-fade-up">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm cursor-pointer" onClick={() => setReviewingItem(null)}></div>
@@ -1465,21 +1450,6 @@ const Admin = ({ showToast }) => {
     }
   };
 
-  const handleSeedProducts = () => {
-    Promise.all(defaultProducts.map(product => 
-      push(ref(db, 'products'), {
-        title: product.title,
-        price: product.price || 0,
-        type: product.type,
-        desc: product.desc,
-        image: product.image
-      })
-    )).then(() => {
-      loadAdminData();
-      showToast("Demo products seeded!", "success");
-    });
-  };
-
   const handleApproveBooking = (booking) => {
     update(ref(db, `bookings/${booking.id}`), { status: "Confirmed" }).then(() => {
       push(ref(db, 'notifications'), {
@@ -1547,9 +1517,14 @@ const Admin = ({ showToast }) => {
     }).catch(err => showToast(err.message, "error"));
   };
 
-  const displayBookings = Array.isArray(dbData?.bookings) && dbData.bookings.length > 0 ? dbData.bookings : mockBookings;
-  const displayTransactions = Array.isArray(dbData?.transactions) && dbData.transactions.length > 0 ? dbData.transactions : mockTransactions;
-  const displayProducts = Array.isArray(dbData?.products) && dbData.products.length > 0 ? dbData.products : defaultProducts;
+  const handleCopyId = (id) => {
+    navigator.clipboard.writeText(id);
+    showToast("ID copied to clipboard!", "success");
+  };
+
+  const displayBookings = Array.isArray(dbData?.bookings) && dbData.bookings.length > 0 ? dbData.bookings : [];
+  const displayTransactions = Array.isArray(dbData?.transactions) && dbData.transactions.length > 0 ? dbData.transactions : [];
+  const displayProducts = Array.isArray(dbData?.products) && dbData.products.length > 0 ? dbData.products : [];
 
   const filteredBookings = displayBookings.filter(b => {
     if (bookingSubTab === 'incoming') return true;
@@ -1642,7 +1617,6 @@ const Admin = ({ showToast }) => {
                           <div>
                             <h4 className="text-white font-bold">
                               {b?.name || 'Unknown User'}
-                              {typeof b?.id === 'string' && String(b.id).includes('mock') && <span className="ml-2 bg-gray-800 text-gray-400 text-[10px] px-2 py-0.5 rounded border border-gray-700">DEMO</span>}
                             </h4>
                             <p className="text-gray-400 text-sm">{b?.service || 'Service'}</p>
                           </div>
@@ -1715,29 +1689,27 @@ const Admin = ({ showToast }) => {
                     </div>
                   </div>
 
-                  {!String(selectedBooking?.id).includes('mock') && (
-                    <div className="bg-black/30 p-4 rounded-lg border border-white/5 mb-6">
-                      <span className="block text-gray-500 text-xs font-bold uppercase tracking-widest mb-2">Message User</span>
-                      <textarea 
-                        rows="2" 
-                        value={adminMessage} 
-                        onChange={e => setAdminMessage(e.target.value)} 
-                        className="w-full bg-[#121212] border border-white/10 rounded px-3 py-2 text-white focus:outline-none focus:border-[#FFBF00] resize-none text-sm mb-2" 
-                        placeholder="Need more details? Send them a message..."
-                      ></textarea>
-                      <div className="flex justify-end">
-                        <button 
-                          onClick={() => handleSendCustomMessage(selectedBooking)} 
-                          className="cursor-pointer bg-white/10 text-white text-xs font-bold py-1.5 px-4 rounded hover:bg-[#FFBF00] hover:text-black transition-colors"
-                        >
-                          Send Message
-                        </button>
-                      </div>
+                  <div className="bg-black/30 p-4 rounded-lg border border-white/5 mb-6">
+                    <span className="block text-gray-500 text-xs font-bold uppercase tracking-widest mb-2">Message User</span>
+                    <textarea 
+                      rows="2" 
+                      value={adminMessage} 
+                      onChange={e => setAdminMessage(e.target.value)} 
+                      className="w-full bg-[#121212] border border-white/10 rounded px-3 py-2 text-white focus:outline-none focus:border-[#FFBF00] resize-none text-sm mb-2" 
+                      placeholder="Need more details? Send them a message..."
+                    ></textarea>
+                    <div className="flex justify-end">
+                      <button 
+                        onClick={() => handleSendCustomMessage(selectedBooking)} 
+                        className="cursor-pointer bg-white/10 text-white text-xs font-bold py-1.5 px-4 rounded hover:bg-[#FFBF00] hover:text-black transition-colors"
+                      >
+                        Send Message
+                      </button>
                     </div>
-                  )}
+                  </div>
                   
                   <div className="flex gap-4">
-                    {selectedBooking?.status === 'Pending' && !String(selectedBooking?.id).includes('mock') && (
+                    {selectedBooking?.status === 'Pending' && (
                       <>
                         <button onClick={() => handleDeclineBooking(selectedBooking)} className="flex-1 cursor-pointer bg-red-500/20 text-red-500 border border-red-500/30 font-bold py-2.5 rounded hover:bg-red-500 hover:text-white transition-all">
                           Decline
@@ -1747,12 +1719,12 @@ const Admin = ({ showToast }) => {
                         </button>
                       </>
                     )}
-                    {selectedBooking?.status === 'Confirmed' && !String(selectedBooking?.id).includes('mock') && (
+                    {selectedBooking?.status === 'Confirmed' && (
                       <button onClick={() => handleDeployBooking(selectedBooking)} className="w-full cursor-pointer bg-blue-500/20 text-blue-500 font-bold py-2.5 rounded border border-blue-500/30 hover:bg-blue-500 hover:text-white transition-all">
                         Mark as Deployed
                       </button>
                     )}
-                    {(selectedBooking?.status === 'Deployed' || selectedBooking?.status === 'Declined' || String(selectedBooking?.id).includes('mock')) && (
+                    {(selectedBooking?.status === 'Deployed' || selectedBooking?.status === 'Declined') && (
                       <button onClick={() => setSelectedBooking(null)} className="w-full cursor-pointer bg-white/5 text-white font-bold py-2.5 rounded border border-white/10 hover:bg-white/10 transition-all">
                         Close
                       </button>
@@ -1848,41 +1820,37 @@ const Admin = ({ showToast }) => {
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-2xl font-bold text-white">Shop Inventory</h2>
                   <div className="flex gap-4">
-                    {dbData?.products?.length === 0 && (
-                      <button onClick={handleSeedProducts} className="cursor-pointer bg-[#1a1a1a] text-white text-sm font-bold py-2 px-4 rounded border border-white/10 hover:border-[#FFBF00] transition-colors">
-                        Seed Demo Products
-                      </button>
-                    )}
                     <button onClick={() => setShowProductModal(true)} className="cursor-pointer bg-[#FFBF00] text-black text-sm font-bold py-2 px-4 rounded hover:bg-white transition-colors">
                       + Add Product
                     </button>
                   </div>
                 </div>
                 <div className="space-y-4">
-                  {displayProducts?.map(product => (
-                    <div key={product?.id} className="bg-[#121212] border border-white/5 rounded-xl p-4 flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <img src={product?.image} alt={product?.title || 'Product'} className="w-12 h-12 rounded object-cover" />
-                        <div>
-                          <h4 className="text-white font-bold text-sm">
-                            {product?.title || 'Untitled Product'}
-                            {typeof product?.id === 'number' && <span className="ml-2 bg-gray-800 text-gray-400 text-[10px] px-2 py-0.5 rounded border border-gray-700">DEMO</span>}
-                          </h4>
-                          <p className="text-[#FFBF00] text-xs font-bold">${(parseFloat(product?.price) || 0).toFixed(2)}</p>
+                  {displayProducts.length === 0 ? (
+                     <div className="text-gray-500 text-sm py-8 px-4 text-center border border-dashed border-white/10 rounded-xl">No products available. Add one above.</div>
+                  ) : (
+                     displayProducts.map(product => (
+                      <div key={product?.id} className="bg-[#121212] border border-white/5 rounded-xl p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <img src={product?.image} alt={product?.title || 'Product'} className="w-12 h-12 rounded object-cover" />
+                          <div>
+                            <h4 className="text-white font-bold text-sm">
+                              {product?.title || 'Untitled Product'}
+                            </h4>
+                            <p className="text-[#FFBF00] text-xs font-bold">${(parseFloat(product?.price) || 0).toFixed(2)}</p>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex gap-2">
-                        {typeof product?.id !== 'number' && (
+                        <div className="flex gap-2">
                           <button onClick={() => {
                             remove(ref(db, `products/${product.id}`)).then(()=> {
                               showToast("Product node removed.", "success");
                               loadAdminData();
                             });
                           }} className="cursor-pointer text-red-500 hover:bg-red-500 hover:text-white text-xs font-medium px-3 py-1.5 border border-red-500/30 rounded transition-colors">Delete</button>
-                        )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
             )}
@@ -1918,7 +1886,12 @@ const Admin = ({ showToast }) => {
                         <tbody className="text-sm text-gray-300">
                           {currentTransactions.map(trx => (
                             <tr key={trx?.id} className="border-t border-white/5 hover:bg-white/5 transition-colors">
-                              <td className="p-4 font-mono text-xs">{trx?.id || 'N/A'}</td>
+                              <td className="p-4 font-mono text-xs">
+                                <span onClick={() => handleCopyId(trx?.id)} className="cursor-pointer hover:text-white flex items-center gap-1" title="Click to copy ID">
+                                  {trx?.id || 'N/A'}
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                                </span>
+                              </td>
                               <td className="p-4 text-white font-bold">{trx?.user || 'Unknown'}</td>
                               <td className="p-4">
                                 <div className="flex flex-col gap-1">
@@ -1980,6 +1953,7 @@ const NavBar = ({ cartItems, user, setUser }) => {
   const isActive = (path) => location.pathname === path;
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -1995,6 +1969,20 @@ const NavBar = ({ cartItems, user, setUser }) => {
     });
     return unsubscribe;
   }, [setUser]);
+
+  useEffect(() => {
+    if (!user || user.role === 'admin') { 
+      setUnreadCount(0); 
+      return; 
+    }
+    get(ref(db, 'notifications')).then(snap => {
+       const val = snap.val();
+       if(val) {
+          const list = Object.values(val);
+          setUnreadCount(list.filter(n => n.userEmail === user.email && !n.read).length);
+       } else setUnreadCount(0);
+    });
+  }, [user]);
 
   const handleLogout = () => {
     signOut(auth).then(() => {
@@ -2152,18 +2140,18 @@ function App() {
                 &copy; 2026 All Rights Reserved
               </p>
               </div>
-            </div>
 
             <div className="flex items-center gap-6">
               <a href="https://www.facebook.com/GodsFEIvor" target="_blank" rel="noreferrer" className="text-gray-400 hover:text-[#FFBF00] transition-transform hover:scale-110">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z"/></svg>
               </a>
-              <a href="https://www.facebook.com/GodsFEIvor" target="_blank" rel="noreferrer" className="text-gray-400 hover:text-[#FFBF00] transition-transform hover:scale-110">
+              <a href="https://m.me/YOUR_FACEBOOK_PAGE_NAME" target="_blank" rel="noreferrer" className="text-gray-400 hover:text-[#FFBF00] transition-transform hover:scale-110">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.145 2 11.259c0 2.906 1.488 5.485 3.82 7.159v3.456l3.52-1.94c1.558.428 3.195.666 4.66.666 5.523 0 10-4.145 10-9.259S17.523 2 12 2zm1.096 12.228l-2.825-3.018-5.508 3.018 6.046-6.425 2.898 3.018 5.434-3.018-6.045 6.425z"/></svg>
               </a>
-              <a href="https://www.instagram.com/breakthroughs_with_mc" target="_blank" rel="noreferrer" className="hover:text-[#FFBF00] transition-transform hover:scale-110">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.173.055 1.81.252 2.234.417.564.217.966.477 1.386.897.42.42.68.822.897 1.386.165.424.362 1.06.417 2.234.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.055 1.173-.252 1.81-.417 2.234-.217.564-.477.966-.897 1.386-.42.42-.822.68-1.386.897-.424.165-1.06.362-2.234.417-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.173-.055-1.81-.252-2.234-.417-.564-.217-.966-.477-1.386-.897-.42-.42-.68-.822-.897-1.386-.165-.424-.362-1.06-.417-2.234-.058-1.266-.07-1.646-.07-4.85s.012-3.584.07-4.85c.055-1.173.252-1.81.417-2.234.217-.564.477-.966.897-1.386.42-.42.822-.68 1.386-.897.424-.165 1.06-.362 2.234-.417.265-.125.617-.184 1.092-.206.57-.026.757-.03 2.257-.03zm0-2.163c-3.258 0-3.667.014-4.947.072-1.275.058-2.146.26-2.906.557-.785.303-1.448.71-2.112 1.374-.664.664-1.071 1.327-1.374 2.112-.297.76-.5 1.631-.557 2.906-.058 1.28-.072 1.689-.072 4.947s.014 3.667.072 4.947c.058 1.275.26 2.146.557 2.906.303.785.71 1.448 1.374 2.112.664.664 1.327 1.071 2.112 1.374.76.297 1.631.5 2.906.557 1.28.058 1.689.072 4.947.072s3.667-.014 4.947-.072c1.275-.058 2.146-.26 2.906-.557.785-.303 1.448-.71 2.112-1.374.664-.664 1.071-1.327 1.374-2.112.297-.76.5-1.631.557-2.906.058-1.28.072-1.689.072-4.947s-.014-3.667-.072-4.947c-.058-1.275-.26-2.146-.557-2.906-.303-.785-.71-1.448-1.374-2.112-.664-.664-1.327-1.071-2.112-1.374-.76-.297-1.631-.5-2.906-.557-1.28-.058-1.689-.072-4.947-.072zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.791-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.209-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+              <a href="https://www.instagram.com/breakthroughs_with_mc" target="_blank" rel="noreferrer" className="text-gray-400 hover:text-[#FFBF00] transition-transform hover:scale-110">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.173.055 1.81.252 2.234.417.564.217.966.477 1.386.897.42.42.68.822.897 1.386.165.424.362 1.06.417 2.234.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.055 1.173-.252 1.81-.417 2.234-.217.564-.477.966-.897 1.386-.42-.42-.822.68-1.386.897-.424.165-1.06.362-2.234.417-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.173-.055-1.81-.252-2.234-.417-.564-.217-.966-.477-1.386-.897-.42-.42-.68-.822-.897-1.386-.165-.424-.362-1.06-.417-2.234-.058-1.266-.07-1.646-.07-4.85s.012-3.584.07-4.85c.055-1.173.252-1.81.417-2.234.217-.564.477-.966.897-1.386.42-.42.822-.68 1.386-.897.424-.165 1.06-.362 2.234-.417.265-.125.617-.184 1.092-.206.57-.026.757-.03 2.257-.03zm0-2.163c-3.258 0-3.667.014-4.947.072-1.275.058-2.146.26-2.906.557-.785.303-1.448.71-2.112 1.374-.664.664-1.071 1.327-1.374 2.112-.297.76-.5 1.631-.557 2.906-.058 1.28-.072 1.689-.072 4.947s.014 3.667.072 4.947c.058 1.275.26 2.146.557 2.906.303.785.71 1.448 1.374 2.112.664.664 1.327 1.071 2.112 1.374.76.297 1.631.5 2.906.557 1.28.058 1.689.072 4.947.072s3.667-.014 4.947-.072c1.275-.058 2.146-.26 2.906-.557.785-.303 1.448-.71 2.112-1.374.664-.664-1.071-1.327 1.374-2.112.297-.76.5-1.631.557-2.906.058-1.28.072-1.689.072-4.947-.072zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.791-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.209-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
               </a>
+            </div>
           </div>
         </footer>
       </div>
