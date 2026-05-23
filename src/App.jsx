@@ -1943,6 +1943,71 @@ const Admin = ({ showToast }) => {
           </>
         )}
       </div>
+
+      {/* ADD PRODUCT MODAL */}
+      {showProductModal && (
+        <div className="fixed inset-0 z-[100] flex justify-center items-center px-4 animate-fade-up">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm cursor-pointer" onClick={() => !isUploading && setShowProductModal(false)}></div>
+          <div className="relative bg-[#121212] border border-white/10 rounded-xl w-full max-w-lg p-8 shadow-2xl z-10 max-h-[95vh] overflow-y-auto">
+            {!isUploading && (
+              <button onClick={() => setShowProductModal(false)} className="cursor-pointer absolute top-4 right-4 text-gray-400 hover:text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            )}
+            
+            <h3 className="text-2xl font-bold text-white mb-6 border-b border-white/10 pb-4">Add New Product</h3>
+            
+            <form onSubmit={handleAddProductSubmit} className="space-y-4">
+              <div>
+                <label className="block text-white text-sm font-medium mb-1">Product Title</label>
+                <input type="text" required value={newProduct.title} onChange={e => setNewProduct({...newProduct, title: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/10 rounded px-4 py-2 text-white focus:outline-none focus:border-[#FFBF00]" placeholder="e.g. Host Masterclass" />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-white text-sm font-medium mb-1">Price (₱)</label>
+                  <input type="number" step="0.01" required value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/10 rounded px-4 py-2 text-white focus:outline-none focus:border-[#FFBF00]" placeholder="0.00" />
+                </div>
+                <div>
+                  <label className="block text-white text-sm font-medium mb-1">Type</label>
+                  <select value={newProduct.type} onChange={e => setNewProduct({...newProduct, type: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/10 rounded px-4 py-2 text-white focus:outline-none focus:border-[#FFBF00]">
+                    <option value="eBook">eBook</option>
+                    <option value="Video Course">Video Course</option>
+                    <option value="Template">Template</option>
+                    <option value="Guide">Guide</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-white text-sm font-medium mb-1">Description</label>
+                <textarea rows="3" required value={newProduct.desc} onChange={e => setNewProduct({...newProduct, desc: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/10 rounded px-4 py-2 text-white focus:outline-none focus:border-[#FFBF00] resize-none" placeholder="Describe the product..."></textarea>
+              </div>
+
+              <div>
+                <label className="block text-white text-sm font-medium mb-1">Cover Image (Max 2MB)</label>
+                <input type="file" accept="image/*" onChange={e => setNewProduct({...newProduct, imageFile: e.target.files[0]})} className="w-full bg-[#1a1a1a] border border-white/10 rounded px-4 py-2 text-white text-sm file:mr-4 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-[#FFBF00]/10 file:text-[#FFBF00] hover:file:bg-[#FFBF00]/20 cursor-pointer" />
+              </div>
+
+              <div>
+                <label className="block text-white text-sm font-medium mb-1">Digital Download File (Max 5MB)</label>
+                <input type="file" onChange={e => setNewProduct({...newProduct, docFile: e.target.files[0]})} className="w-full bg-[#1a1a1a] border border-white/10 rounded px-4 py-2 text-white text-sm file:mr-4 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-[#FFBF00]/10 file:text-[#FFBF00] hover:file:bg-[#FFBF00]/20 cursor-pointer" />
+              </div>
+
+              <div className="pt-4 flex gap-4 border-t border-white/10 mt-6">
+                <button type="button" onClick={() => setShowProductModal(false)} disabled={isUploading} className="flex-1 cursor-pointer bg-white/5 text-white font-bold py-3 rounded hover:bg-white/10 transition-all disabled:opacity-50">
+                  Cancel
+                </button>
+                <button type="submit" disabled={isUploading} className="flex-1 cursor-pointer bg-[#FFBF00] text-black font-bold py-3 rounded hover:bg-white transition-all disabled:opacity-50 flex justify-center items-center gap-2">
+                  {isUploading && <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>}
+                  {isUploading ? 'Uploading...' : 'Save Product'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
@@ -2149,7 +2214,7 @@ function App() {
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.145 2 11.259c0 2.906 1.488 5.485 3.82 7.159v3.456l3.52-1.94c1.558.428 3.195.666 4.66.666 5.523 0 10-4.145 10-9.259S17.523 2 12 2zm1.096 12.228l-2.825-3.018-5.508 3.018 6.046-6.425 2.898 3.018 5.434-3.018-6.045 6.425z"/></svg>
               </a>
               <a href="https://www.instagram.com/breakthroughs_with_mc" target="_blank" rel="noreferrer" className="text-gray-400 hover:text-[#FFBF00] transition-transform hover:scale-110">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.173.055 1.81.252 2.234.417.564.217.966.477 1.386.897.42.42.68.822.897 1.386.165.424.362 1.06.417 2.234.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.055 1.173-.252 1.81-.417 2.234-.217.564-.477.966-.897 1.386-.42-.42-.822.68-1.386.897-.424.165-1.06.362-2.234.417-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.173-.055-1.81-.252-2.234-.417-.564-.217-.966-.477-1.386-.897-.42-.42-.68-.822-.897-1.386-.165-.424-.362-1.06-.417-2.234-.058-1.266-.07-1.646-.07-4.85s.012-3.584.07-4.85c.055-1.173.252-1.81.417-2.234.217-.564.477-.966.897-1.386.42-.42.822-.68 1.386-.897.424-.165 1.06-.362 2.234-.417.265-.125.617-.184 1.092-.206.57-.026.757-.03 2.257-.03zm0-2.163c-3.258 0-3.667.014-4.947.072-1.275.058-2.146.26-2.906.557-.785.303-1.448.71-2.112 1.374-.664.664-1.071 1.327-1.374 2.112-.297.76-.5 1.631-.557 2.906-.058 1.28-.072 1.689-.072 4.947s.014 3.667.072 4.947c.058 1.275.26 2.146.557 2.906.303.785.71 1.448 1.374 2.112.664.664 1.327 1.071 2.112 1.374.76.297 1.631.5 2.906.557 1.28.058 1.689.072 4.947.072s3.667-.014 4.947-.072c1.275-.058 2.146-.26 2.906-.557.785-.303 1.448-.71 2.112-1.374.664-.664-1.071-1.327 1.374-2.112.297-.76.5-1.631.557-2.906.058-1.28.072-1.689.072-4.947-.072zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.791-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.209-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.173.055 1.81.252 2.234.417.564.217.966.477 1.386.897.42.42.68.822.897 1.386.165.424.362 1.06.417 2.234.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.055 1.173-.252 1.81-.417 2.234-.217.564-.477.966-.897 1.386-.42-.42-.822.68-1.386.897-.424.165-1.06.362-2.234.417-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.173-.055-1.81-.252-2.234-.417-.564-.217-.966-.477-1.386-.897-.42-.42-.822.68-1.386.897-.424.165-1.06.362-2.234.417.265-.125.617-.184 1.092-.206.57-.026.757-.03 2.257-.03zm0-2.163c-3.258 0-3.667.014-4.947.072-1.275.058-2.146.26-2.906.557-.785.303-1.448.71-2.112 1.374-.664.664-1.071 1.327-1.374 2.112-.297.76-.5 1.631-.557 2.906-.058 1.28-.072 1.689-.072 4.947s.014 3.667.072 4.947c.058 1.275.26 2.146.557 2.906.303.785.71 1.448 1.374 2.112.664.664 1.327 1.071 2.112 1.374.76.297 1.631.5 2.906.557 1.28.058 1.689.072 4.947.072s3.667-.014 4.947-.072c1.275-.058 2.146-.26 2.906-.557.785-.303 1.448-.71 2.112-1.374.664-.664-1.071-1.327 1.374-2.112.297-.76.5-1.631.557-2.906.058-1.28.072-1.689.072-4.947-.072zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.791-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.209-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
               </a>
             </div>
           </div>
